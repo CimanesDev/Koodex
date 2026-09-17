@@ -1,0 +1,43 @@
+{
+  "name": "koodex",
+  "productName": "Koodex",
+  "version": "1.3.0",
+  "private": true,
+  "description": "A quiet Codex usage companion for Windows",
+  "author": "Koodex contributors",
+  "license": "MIT",
+  "main": "dist/main/main.js",
+  "scripts": {
+    "test:placement": "node scripts/placement.mjs",
+    "test:customization": "node scripts/customization.mjs",
+    "dev": "node scripts/dev.mjs",
+    "dev:mock": "node scripts/dev.mjs --mock",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test tests/*.test.ts",
+    "build": "npm run typecheck && node scripts/build.mjs",
+    "dist": "npm run build && electron-builder --win --x64",
+    "smoke": "node scripts/smoke.mjs",
+    "test:scenarios": "node scripts/scenarios.mjs",
+    "test:live": "tsx scripts/check-live.ts",
+    "test:packaged-live": "node scripts/packaged-live.mjs",
+    "format": "prettier --write src scripts tests package.json tsconfig.json vite.config.ts"
+  },
+  "dependencies": {
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0",
+    "@types/node": "^22.15.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "electron": "^44.4.1",
+    "electron-builder": "^26.0.12",
+    "esbuild": "^0.25.0",
+    "pngjs": "^7.0.0",
+    "prettier": "^3.9.7",
+    "tsx": "^4.19.0",
+    "typescript": "^5.8.3",
+    "vite": "^7.0.0"
+  }
+}
