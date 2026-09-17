@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { resolve, join } from "node:path";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
+import { getPage, openSettings } from "./windows.mjs";
 mkdirSync(".smoke-data", { recursive: true });
 const directory = mkdtempSync(resolve(".smoke-data", "placement-"));
 writeFileSync(
@@ -27,14 +28,8 @@ const app = await electron.launch({
   env,
 });
 try {
-  await app.firstWindow();
-  await expect
-    .poll(() => app.windows().filter((p) => p.url().includes("view=")).length)
-    .toBe(3);
-  const page = (name) =>
-    app.windows().find((p) => p.url().includes(`view=${name}`));
-  const pill = page("pill"),
-    prefs = page("settings");
+  const pill = await getPage(app, "pill");
+  const prefs = await openSettings(app, pill);
   await expect(pill.locator(".metric")).toBeVisible();
   const update = (patch) =>
     pill.evaluate((patch) => window.Koodex.updateSettings(patch), patch);

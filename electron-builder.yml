@@ -1,10 +1,18 @@
 appId: com.koodex.desktop
 productName: Koodex
 directories:
-  output: release/1.3.0
+  output: release/1.4.0
+electronLanguages:
+  - en-US
+compression: maximum
 files:
   - dist/**/*
-  - assets/**/*
+  - '!dist/**/*.map'
+  - '!node_modules/**/*'
+  - assets/icons/koodex.ico
+  - assets/claude-bridge.cjs
+  - assets/tray/*-dual-*.png
+  - assets/tray/*-logo.png
   - package.json
 win:
   icon: assets/icons/koodex.ico

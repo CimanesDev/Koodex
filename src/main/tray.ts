@@ -8,6 +8,7 @@ export class KoodexTray {
   private style: Settings["trayStyle"] = "meter";
   private amounts: readonly [number, number] = [-1, -1];
   private iconKey = "";
+  private menuKey = "";
   constructor(
     private windows: Windows,
     private refresh: () => void,
@@ -58,6 +59,13 @@ export class KoodexTray {
         .join("\n")
         .slice(0, 127),
     );
+    const menuKey = JSON.stringify([
+      lines,
+      settings.launchAtStartup,
+      settings.floatingPillEnabled,
+    ]);
+    if (menuKey === this.menuKey) return;
+    this.menuKey = menuKey;
     this.tray.setContextMenu(
       Menu.buildFromTemplate([
         { label: "Koodex", enabled: false },

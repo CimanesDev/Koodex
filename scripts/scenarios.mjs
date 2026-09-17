@@ -2,6 +2,7 @@ import { _electron as electron } from "@playwright/test";
 import assert from "node:assert/strict";
 import { resolve } from "node:path";
 import { mkdirSync, writeFileSync } from "node:fs";
+import { getPage, openPopover } from "./windows.mjs";
 const executable = process.argv.find((a) => a.startsWith("--exe="))?.slice(6);
 for (const scenario of [
   "normal",
@@ -34,9 +35,7 @@ for (const scenario of [
     env,
   });
   try {
-    await app.firstWindow();
-    await new Promise((r) => setTimeout(r, 500));
-    const page = app.windows().find((p) => p.url().includes("view=popover"));
+    const page = await openPopover(app);
     assert.ok(page);
     await page.waitForFunction(() => !!window.Koodex);
     await page.evaluate(() => window.Koodex.openPopover());
@@ -48,7 +47,11 @@ for (const scenario of [
     );
     assert.equal(await page.getByRole("progressbar").count(), count);
     if (scenario === "offline")
-      assert.ok(await page.getByText("Unable to read Codex usage. Retrying automatically.").count());
+      assert.ok(
+        await page
+          .getByText("Unable to read Codex usage. Retrying automatically.")
+          .count(),
+      );
     if (scenario === "loading")
       assert.ok(await page.getByText("Connecting to Codex…").count());
     if (scenario === "critical")
@@ -63,7 +66,7 @@ for (const scenario of [
         }),
       );
       await page.evaluate(() => window.Koodex.finishSetup());
-      const pill = app.windows().find((p) => p.url().includes("view=pill"));
+      const pill = await getPage(app, "pill");
       assert.ok(pill);
       await page.evaluate(() => window.Koodex.hidePopover());
       const first = await pill.locator(".metric").textContent();

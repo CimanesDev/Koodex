@@ -75,7 +75,7 @@ export class CodexServer extends EventEmitter {
     });
     try {
       await rpc.request("initialize", {
-        clientInfo: { name: "koodex", title: "Koodex", version: "1.3.0" },
+        clientInfo: { name: "koodex", title: "Koodex", version: "1.4.0" },
         capabilities: null,
       });
       if (this.stopping) throw new Error("Codex connection stopped");

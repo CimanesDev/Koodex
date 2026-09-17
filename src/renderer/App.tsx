@@ -15,6 +15,8 @@ export function App() {
   const root = useRef<HTMLDivElement>(null);
   useEffect(() => window.Koodex.onView(setView), []);
   useEffect(() => {
+    if (pill && !settings.pillShowReset) return;
+    setNow(Date.now());
     const timer = setInterval(() => {
       if (!document.hidden) setNow(Date.now());
     }, 15000);
@@ -24,7 +26,7 @@ export function App() {
       clearInterval(timer);
       document.removeEventListener("visibilitychange", visible);
     };
-  }, []);
+  }, [pill, settings.pillShowReset]);
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
       if (e.key === "Escape")
@@ -45,7 +47,11 @@ export function App() {
     return () => observer.disconnect();
   }, [pill, preferences]);
   return (
-    <div ref={root} data-accent={settings.accentColor}>
+    <div
+      ref={root}
+      data-accent={settings.accentColor}
+      onMouseEnter={() => setNow(Date.now())}
+    >
       {pill ? (
         <CompactPill
           state={state}

@@ -2,6 +2,7 @@ import { _electron as electron, expect } from "@playwright/test";
 import assert from "node:assert/strict";
 import { resolve } from "node:path";
 import { mkdirSync, mkdtempSync } from "node:fs";
+import { getPage, openSettings, visible } from "./windows.mjs";
 const executable = process.argv.find((a) => a.startsWith("--exe="))?.slice(6);
 mkdirSync(".smoke-data", { recursive: true });
 const directory = mkdtempSync(resolve(".smoke-data", "onboarding-"));
@@ -18,27 +19,9 @@ const launch = () =>
       : { args: ["."] }),
     env,
   });
-async function pages(app) {
-  await app.firstWindow();
-  await expect
-    .poll(() => app.windows().filter((p) => p.url().includes("view=")).length)
-    .toBe(3);
-  return Object.fromEntries(
-    app.windows().map((p) => [new URL(p.url()).searchParams.get("view"), p]),
-  );
-}
-async function visible(app, view) {
-  return app.evaluate(
-    ({ BrowserWindow }, view) =>
-      BrowserWindow.getAllWindows()
-        .find((w) => w.webContents.getURL().includes("view=" + view))
-        .isVisible(),
-    view,
-  );
-}
 const app = await launch();
 try {
-  const { pill, popover: popup, settings: prefs } = await pages(app);
+  let prefs = await getPage(app, "settings");
   await expect(
     prefs.getByRole("heading", { name: "Welcome to Koodex" }),
   ).toBeVisible();
@@ -66,6 +49,7 @@ try {
   );
   await prefs.getByRole("button", { name: "Start Koodex" }).click();
   await expect.poll(() => visible(app, "pill")).toBe(true);
+  const pill = await getPage(app, "pill");
   assert.equal(await visible(app, "settings"), false);
   assert.equal(await visible(app, "popover"), false);
   await expect(pill.locator(".metric")).toContainText("Weekly");
@@ -104,7 +88,7 @@ try {
     contentHover,
     "Hover should cover the entire pill",
   );
-  await popup.evaluate(() => window.Koodex.openSettings());
+  prefs = await openSettings(app, pill);
   await expect(
     prefs.getByRole("heading", { name: "Make it yours" }),
   ).toBeVisible();
@@ -126,7 +110,7 @@ try {
     previous = await pill.locator(".metric").textContent();
   }
   await app.evaluate(() => globalThis.focusTest.destroy());
-  await popup.evaluate(() => window.Koodex.openSettings());
+  prefs = await openSettings(app, pill);
   await prefs.getByLabel("Switch limits").selectOption("0");
   await prefs.getByRole("button", { name: "Both limits Side by side" }).click();
   await prefs.getByRole("button", { name: "Appearance", exact: true }).click();
@@ -193,7 +177,7 @@ try {
 }
 const reopened = await launch();
 try {
-  const { pill } = await pages(reopened);
+  const pill = await getPage(reopened, "pill");
   await expect(pill.getByRole("progressbar")).toHaveCount(2);
   const settings = await pill.evaluate(() => window.Koodex.getSettings());
   assert.equal(settings.setupCompleted, true);

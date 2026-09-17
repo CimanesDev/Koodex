@@ -54,6 +54,8 @@ if (!app.requestSingleInstanceLock()) {
     let generation = 0;
     let pendingRefresh = false;
     let failures = 0;
+    let cacheFingerprint = "";
+    let cacheSavedAt = 0;
     if (!state.usage) state.syncState = "connecting";
     function alertFile() {
       return settings.provider === "claude" ? "alerts-claude" : "alerts";
@@ -108,7 +110,15 @@ if (!app.requestSingleInstanceLock()) {
           const usage = adaptUsage(await server.read());
           if (currentGeneration !== generation) return;
           state = { provider, usage, syncState: "synced" };
-          persist("usage", { usage, fetchedAt: usage.fetchedAt });
+          const fingerprint = JSON.stringify({ ...usage, fetchedAt: 0 });
+          if (
+            fingerprint !== cacheFingerprint ||
+            Date.now() - cacheSavedAt >= 60000
+          ) {
+            persist("usage", { usage, fetchedAt: usage.fetchedAt });
+            cacheFingerprint = fingerprint;
+            cacheSavedAt = Date.now();
+          }
         }
         if (
           !mock &&
@@ -117,12 +127,14 @@ if (!app.requestSingleInstanceLock()) {
           settings.notificationsEnabled &&
           Notification.isSupported()
         ) {
+          const previousLedger = JSON.stringify(ledger);
           for (const a of collectAlerts(state.usage, ledger))
             new Notification({
               title: "Koodex",
               body: `Your ${a.label} ${provider === "claude" ? "Claude Code" : "Codex"} limit has ${Math.round(a.remaining)}% remaining. Resets in ${resetIn(a.resetsAt)}.`,
             }).show();
-          persist(alertFile(), ledger);
+          if (JSON.stringify(ledger) !== previousLedger)
+            persist(alertFile(), ledger);
         }
         failures = 0;
       } catch (error) {
@@ -152,6 +164,7 @@ if (!app.requestSingleInstanceLock()) {
       const providerChanged = next.provider !== settings.provider;
       settings = next;
       if (providerChanged) {
+        syncClaudeWatcher();
         ledger = loadLedger();
         generation++;
         failures = 0;
@@ -188,11 +201,7 @@ if (!app.requestSingleInstanceLock()) {
       ipcMain.handle(name, (event: IpcMainInvokeEvent, arg: unknown) => {
         if (
           !windows ||
-          ![
-            windows.popover.webContents,
-            windows.pill.webContents,
-            windows.preferences.webContents,
-          ].includes(event.sender) ||
+          !windows.owns(event.sender) ||
           event.senderFrame !== event.sender.mainFrame
         )
           throw new Error("Untrusted IPC");
@@ -206,7 +215,7 @@ if (!app.requestSingleInstanceLock()) {
     handle("settings:get", () => settings);
     handle("settings:update", update);
     handle("settings:open", () => windows!.openSettings());
-    handle("settings:close", () => windows!.preferences.hide());
+    handle("settings:close", () => windows!.closeSettings());
     handle("settings:finish", () => {
       // Persist before dismissing setup so failed writes can be retried.
       const completed = { ...settings, setupCompleted: true };
@@ -214,11 +223,11 @@ if (!app.requestSingleInstanceLock()) {
       settings = completed;
       windows!.broadcast("settings", settings);
       windows!.syncPill();
-      windows!.preferences.hide();
+      windows!.closeSettings();
       tray!.render(state, settings);
     });
     handle("popover:open", () => windows!.open());
-    handle("popover:hide", () => windows!.popover.hide());
+    handle("popover:hide", () => windows!.hidePopover());
     handle("quit", () => app.quit());
     handle("popover:resize", (h) => {
       if (typeof h === "number" && Number.isFinite(h)) windows!.resize(h);
@@ -235,22 +244,28 @@ if (!app.requestSingleInstanceLock()) {
         schedule();
       }
     });
-    watchFile(
-      claudeFile(app.getPath("userData")),
-      { interval: 500, persistent: false },
-      (current, previous) => {
-        if (
-          quitting ||
-          settings.provider !== "claude" ||
-          current.mtimeMs === previous.mtimeMs
-        )
-          return;
-        if (busy) pendingRefresh = true;
-        else void refresh();
-      },
-    );
+    function syncClaudeWatcher() {
+      unwatchFile(claudeFile(app.getPath("userData")));
+      if (settings.provider !== "claude") return;
+      watchFile(
+        claudeFile(app.getPath("userData")),
+        { interval: 500, persistent: false },
+        (current, previous) => {
+          if (
+            quitting ||
+            settings.provider !== "claude" ||
+            current.mtimeMs === previous.mtimeMs
+          )
+            return;
+          if (busy) pendingRefresh = true;
+          else void refresh();
+        },
+      );
+    }
+    syncClaudeWatcher();
     void refresh();
+    windows.syncPill();
     if (!settings.setupCompleted && !process.argv.includes("--startup"))
-      windows.preferences.once("ready-to-show", () => windows!.openSettings());
+      windows.openSettings();
   });
 }

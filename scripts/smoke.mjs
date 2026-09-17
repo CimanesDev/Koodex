@@ -2,6 +2,7 @@ import { _electron as electron, expect } from "@playwright/test";
 import assert from "node:assert/strict";
 import { resolve } from "node:path";
 import { mkdirSync, writeFileSync } from "node:fs";
+import { getPage, openPopover, visible } from "./windows.mjs";
 const testData = resolve(".smoke-data", "smoke");
 mkdirSync(testData, { recursive: true });
 writeFileSync(
@@ -26,9 +27,7 @@ const app = await electron.launch({
   env,
 });
 try {
-  await app.firstWindow();
-  await new Promise((r) => setTimeout(r, 500));
-  const page = app.windows().find((p) => p.url().includes("view=popover"));
+  let page = await openPopover(app);
   assert.ok(page, "Popover renderer must load");
   page.on("pageerror", (error) => console.error("Renderer:", error.message));
   await page.waitForFunction(() => !!window.Koodex);
@@ -42,9 +41,7 @@ try {
   assert.equal(await page.getByRole("progressbar").count(), 2);
   assert.ok(await page.getByText("68", { exact: false }).count());
   await page.getByRole("button", { name: "Settings", exact: true }).click();
-  const preferences = app
-    .windows()
-    .find((p) => p.url().includes("view=settings"));
+  const preferences = await getPage(app, "settings");
   await preferences.getByRole("heading", { name: "Make it yours" }).waitFor();
   const pillSwitch = preferences.getByRole("switch", {
     name: "Show floating pill",
@@ -52,7 +49,7 @@ try {
   });
   await pillSwitch.check();
   assert.equal(
-    await page.evaluate(
+    await preferences.evaluate(
       async () => (await window.Koodex.getSettings()).floatingPillEnabled,
     ),
     true,
@@ -66,12 +63,12 @@ try {
   await expect
     .poll(
       async () =>
-        (await page.evaluate(() => window.Koodex.getSettings()))
+        (await preferences.evaluate(() => window.Koodex.getSettings()))
           .refreshIntervalSeconds,
     )
     .toBe(300);
   await preferences.getByRole("button", { name: "Done", exact: false }).click();
-  await page.evaluate(() => window.Koodex.openPopover());
+  page = await openPopover(app);
   await page
     .getByRole("heading", { name: "Koodex · Codex", exact: true })
     .waitFor();
@@ -82,14 +79,15 @@ try {
   });
   await page.keyboard.press("Escape");
   assert.equal(
-    await app.evaluate(({ BrowserWindow }) =>
-      BrowserWindow.getAllWindows()
-        .find((w) => w.webContents.getURL().includes("view=popover"))
-        .isVisible(),
+    await app.evaluate(
+      ({ BrowserWindow }) =>
+        BrowserWindow.getAllWindows()
+          .find((w) => w.webContents.getURL().includes("view=popover"))
+          ?.isVisible() ?? false,
     ),
     false,
   );
-  await page.evaluate(() => window.Koodex.openPopover());
+  page = await openPopover(app);
   await app.evaluate(({ BrowserWindow }) => {
     const other = new BrowserWindow({ width: 80, height: 80, show: false });
     other.show();
@@ -98,14 +96,16 @@ try {
   });
   await new Promise((r) => setTimeout(r, 700));
   assert.equal(
-    await app.evaluate(({ BrowserWindow }) =>
-      BrowserWindow.getAllWindows()
-        .find((w) => w.webContents.getURL().includes("view=popover"))
-        .isVisible(),
+    await app.evaluate(
+      ({ BrowserWindow }) =>
+        BrowserWindow.getAllWindows()
+          .find((w) => w.webContents.getURL().includes("view=popover"))
+          ?.isVisible() ?? false,
     ),
     false,
   );
-  const settings = await page.evaluate(() => window.Koodex.getSettings());
+  const pill = await getPage(app, "pill");
+  const settings = await pill.evaluate(() => window.Koodex.getSettings());
   assert.equal(settings.refreshIntervalSeconds, 300);
   console.log(
     "Electron smoke passed: usage, settings, floating pill, Escape, click-away.",

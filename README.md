@@ -18,6 +18,14 @@ A quiet Windows tray companion for Codex and optional Claude Code quota reports.
 
 ![Pill with reset countdowns and quick refresh](assets/screenshots/pill-reset-refresh.png)
 
+## Resource use in 1.4
+
+Settings and usage windows are created on demand and released one second after closing. Tray-only mode keeps no renderer windows; showing the pill uses one. Closing settings no longer leaves its renderer in memory. Manual-only pills avoid a periodic countdown timer when countdowns are off, and only opt-in automatic switching disables background throttling. Unchanged tray menus are reused, unchanged Codex cache writes are limited to once a minute, and Claude's file watcher runs only when Claude is selected. Live update intervals are unchanged.
+
+In an isolated Windows sample-data run, private memory fell from **299.1 to 90.2 MiB** at tray-only startup and from **303.8 to 161.9 MiB** with the pill visible. The installer fell from **112.6 to 102.9 MB**; unpacked size fell from **395.0 to 336.2 MB**. Results vary by device and session. The memory measurements exclude the separate Codex CLI child. See [measurement details](docs/performance.md).
+
+Packages include only the English Chromium locale, required runtime assets, and bundled application code. Screenshots, source maps, obsolete tray variants, and duplicate Node dependencies remain outside the package. Electron still dominates download size; reaching a few megabytes would require replacing the embedded browser runtime.
+
 ## Getting started
 
 Run the installer or portable executable. On first launch, choose your preferences in the welcome screen, try the preview, and click **Start Koodex**. The preview uses clearly labeled sample values and never refreshes your real account.
@@ -82,10 +90,10 @@ npm run build
 npm run dist
 ```
 
-Version 1.3 outputs in `release/1.3.0/`:
+Version 1.4 outputs in `release/1.4.0/`:
 
-- `Koodex-1.3.0-x64-nsis.exe` - per-user installer, no administrator privileges required.
-- `Koodex-1.3.0-x64-portable.exe` - standalone launcher.
+- `Koodex-1.4.0-x64-nsis.exe` - per-user installer, no administrator privileges required.
+- `Koodex-1.4.0-x64-portable.exe` - standalone launcher.
 - `win-unpacked/Koodex.exe` - unpacked app (keep its adjacent files).
 
 Quit an older running Koodex before starting the new version. Builds are unsigned unless electron-builder signing is configured. Uninstall preserves preferences and cached usage. Keep the portable launcher at a stable path if enabling startup. Normal Windows startup is silent after setup.
@@ -102,7 +110,9 @@ npm run smoke
 npm run test:scenarios
 npm run test:customization
 npm run test:placement
-npm run test:customization -- --exe=release/1.3.0/win-unpacked/Koodex.exe
+npm run test:customization -- --exe=release/1.4.0/win-unpacked/Koodex.exe
+npm run test:resources -- --exe=release/1.4.0/win-unpacked/Koodex.exe --label=1.4.0
+npm run test:package
 npm run test:live
 npm run test:packaged-live
 ```
@@ -117,7 +127,7 @@ The main process maintains one `codex app-server --listen stdio://` child. After
 
 Wire types were inspected using `codex-cli 0.154.0 app-server generate-ts` on September 16, 2026. The adapter prefers the `codex` bucket, falls back to the legacy snapshot, and converts Unix reset seconds to milliseconds. Protocol changes may require adapter updates. See the [official App Server documentation](https://learn.chatgpt.com/docs/app-server).
 
-Renderers are sandboxed with context isolation, Node integration disabled, and a narrow preload API. Navigation and new windows are blocked. Native positions use device-independent work-area coordinates. The visible pill's timer is not background-throttled; hidden windows remain throttled.
+Renderers are sandboxed with context isolation, Node integration disabled, and a narrow preload API. Navigation and new windows are blocked. Native positions use device-independent work-area coordinates. Only a visible pill with automatic switching needs an unthrottled timer; closed windows release their renderers after a short reopen grace period.
 
 ## Privacy
 

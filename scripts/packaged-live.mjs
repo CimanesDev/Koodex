@@ -2,6 +2,7 @@
 import assert from "node:assert/strict";
 import { resolve } from "node:path";
 import { mkdirSync, writeFileSync } from "node:fs";
+import { openPopover } from "./windows.mjs";
 const testData = resolve(".smoke-data", "packaged-live");
 mkdirSync(testData, { recursive: true });
 writeFileSync(
@@ -19,14 +20,19 @@ const env = {
 delete env.ELECTRON_RUN_AS_NODE;
 delete env.KOODEX_MOCK;
 const app = await electron.launch({
-  executablePath: resolve("release/1.3.0/win-unpacked/Koodex.exe"),
+  executablePath: resolve("release/1.4.0/win-unpacked/Koodex.exe"),
   args: [],
   env,
 });
 try {
-  await app.firstWindow();
-  await new Promise((r) => setTimeout(r, 500));
-  const page = app.windows().find((p) => p.url().includes("view=popover"));
+  assert.equal(
+    await app.evaluate(
+      ({ BrowserWindow }) => BrowserWindow.getAllWindows().length,
+    ),
+    0,
+    "Tray-only startup must create no renderers",
+  );
+  const page = await openPopover(app);
   assert.ok(page);
   await expect
     .poll(
@@ -54,15 +60,19 @@ try {
   const switched = await page.evaluate(() => window.Koodex.getUsage());
   assert.equal(switched.provider, "claude");
   assert.equal(switched.usage, null);
-  await page.evaluate(() => window.Koodex.updateSettings({ provider: "codex" }));
-  await expect.poll(async () => (await page.evaluate(() => window.Koodex.getUsage())).syncState, { timeout: 30000 }).toBe("synced");
-  assert.equal((await page.evaluate(() => window.Koodex.getUsage())).provider, "codex");
+  await page.evaluate(() =>
+    window.Koodex.updateSettings({ provider: "codex" }),
+  );
+  await expect
+    .poll(
+      async () =>
+        (await page.evaluate(() => window.Koodex.getUsage())).syncState,
+      { timeout: 30000 },
+    )
+    .toBe("synced");
   assert.equal(
-    await app.evaluate(({ BrowserWindow }) =>
-      BrowserWindow.getAllWindows().every((w) => !w.isVisible()),
-    ),
-    true,
-    "Live startup should remain tray-only",
+    (await page.evaluate(() => window.Koodex.getUsage())).provider,
+    "codex",
   );
   // Verify the startup setting reaches Electron with the correct executable/args,
   // without registering this test copy in the user's Windows startup list.

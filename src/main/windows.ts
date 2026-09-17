@@ -1,72 +1,37 @@
-import { app, BrowserWindow, screen, Menu } from "electron";
+import { app, BrowserWindow, screen, Menu, type WebContents } from "electron";
 import { join } from "node:path";
 import type { Settings } from "../shared/types";
 import { clampBounds, nearAnchor, type Rect } from "./positioning";
 import { pillSize, pinnedPosition } from "../shared/pill";
+
 export class Windows {
-  popover: BrowserWindow;
-  pill: BrowserWindow;
-  preferences: BrowserWindow;
+  popover?: BrowserWindow;
+  pill?: BrowserWindow;
+  preferences?: BrowserWindow;
   private anchor?: Rect;
-  private ready = false;
-  private pendingView = "usage";
   private blurredAt = 0;
+  private ready = new WeakSet<BrowserWindow>();
+  private pendingShow = new Map<BrowserWindow, boolean>();
+  private releaseTimers = new Map<BrowserWindow, NodeJS.Timeout>();
   constructor(
     private getSettings: () => Settings,
-    savePosition: (p: { x: number; y: number }) => void,
-    hidePill: () => void,
+    private savePosition: (p: { x: number; y: number }) => void,
+    private hidePill: () => void,
   ) {
-    this.popover = this.create(320, 270, "popover");
-    this.pill = this.create(204, 44, "pill");
-    this.preferences = this.create(680, 640, "settings");
-    this.preferences.on("close", (e) => {
-      e.preventDefault();
-      this.preferences.hide();
-    });
-    this.popover.on("show", () => this.pill.webContents.send("view", "paused"));
-    this.popover.on("hide", () => this.pill.webContents.send("view", "usage"));
-    this.popover.on("blur", () => {
-      this.blurredAt = Date.now();
-      this.popover.hide();
-    });
-    this.popover.on("close", (e) => {
-      e.preventDefault();
-      this.popover.hide();
-    });
-    this.pill.on("close", (e) => {
-      e.preventDefault();
-      hidePill();
-    });
-    this.popover.webContents.on("did-finish-load", () => {
-      this.ready = true;
-      this.popover.webContents.send("view", this.pendingView);
-    });
-    this.pill.once("ready-to-show", () => this.syncPill());
-    this.pill.on("will-move", (event, bounds) => {
-      if (
-        this.getSettings().pillPlacement !== "free" ||
-        !this.getSettings().pillShowDragHandle
-      ) {
-        event.preventDefault();
-        return;
-      }
-      const { x, y } = bounds;
-      savePosition({ x, y });
-    });
-    this.pill.webContents.on("context-menu", () =>
-      Menu.buildFromTemplate([
-        { label: "Usage details", click: () => this.open() },
-        { label: "Settings", click: () => this.openSettings() },
-        { type: "separator" },
-        { label: "Hide floating pill", click: hidePill },
-      ]).popup({ window: this.pill }),
-    );
     const reposition = () => {
       this.syncPill();
-      if (this.popover.isVisible()) this.position();
+      if (this.popover?.isVisible()) this.position();
     };
     screen.on("display-metrics-changed", reposition);
     screen.on("display-removed", reposition);
+  }
+  private all() {
+    return [this.popover, this.pill, this.preferences].filter(
+      (w): w is BrowserWindow => !!w && !w.isDestroyed(),
+    );
+  }
+  owns(contents: WebContents) {
+    return this.all().some((w) => w.webContents === contents);
   }
   private create(width: number, height: number, view: string) {
     const w = new BrowserWindow({
@@ -88,12 +53,25 @@ export class Windows {
         contextIsolation: true,
         nodeIntegration: false,
         sandbox: true,
-        // Keep the visible, unfocused pill's rotation timer responsive.
-        backgroundThrottling: view !== "pill",
+        backgroundThrottling: true,
+        spellcheck: false,
       },
     });
     w.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
     w.webContents.on("will-navigate", (e) => e.preventDefault());
+    w.once("ready-to-show", () => {
+      this.ready.add(w);
+      if (this.pendingShow.has(w)) this.show(w, this.pendingShow.get(w)!);
+    });
+    w.on("hide", () => this.releaseLater(w));
+    w.on("closed", () => {
+      clearTimeout(this.releaseTimers.get(w));
+      this.releaseTimers.delete(w);
+      this.pendingShow.delete(w);
+      if (this.popover === w) this.popover = undefined;
+      if (this.preferences === w) this.preferences = undefined;
+      if (this.pill === w) this.pill = undefined;
+    });
     if (!app.isPackaged && process.env.KOODEX_DEV_URL)
       void w.loadURL(`${process.env.KOODEX_DEV_URL}/?view=${view}`);
     else
@@ -102,25 +80,81 @@ export class Windows {
       });
     return w;
   }
+  private show(w: BrowserWindow, focus: boolean) {
+    clearTimeout(this.releaseTimers.get(w));
+    this.releaseTimers.delete(w);
+    this.pendingShow.set(w, focus);
+    if (!this.ready.has(w)) return;
+    if (focus) {
+      w.show();
+      w.focus();
+    } else if (!w.isVisible()) w.showInactive();
+  }
+  private releaseLater(w: BrowserWindow) {
+    this.pendingShow.delete(w);
+    clearTimeout(this.releaseTimers.get(w));
+    // Let the closing IPC reply arrive and quick reopen clicks reuse the window.
+    this.releaseTimers.set(
+      w,
+      setTimeout(() => {
+        this.releaseTimers.delete(w);
+        if (!w.isDestroyed() && !w.isVisible()) w.destroy();
+      }, 1000),
+    );
+  }
+  private hide(w?: BrowserWindow) {
+    if (!w || w.isDestroyed()) return;
+    w.hide();
+    this.releaseLater(w);
+  }
+  hidePopover() {
+    this.hide(this.popover);
+  }
+  closeSettings() {
+    this.hide(this.preferences);
+  }
   open(anchor?: Rect, view = "usage") {
     if (view === "settings") {
       this.openSettings();
       return;
     }
-    this.anchor = anchor ?? this.pill.getBounds();
-    this.pendingView = view;
+    this.anchor = anchor ??
+      this.pill?.getBounds() ?? {
+        ...screen.getCursorScreenPoint(),
+        width: 1,
+        height: 1,
+      };
+    if (!this.popover) {
+      const w = this.create(320, 270, "popover");
+      this.popover = w;
+      w.on("show", () => this.pill?.webContents.send("view", "paused"));
+      w.on("hide", () => this.pill?.webContents.send("view", "usage"));
+      w.on("blur", () => {
+        this.blurredAt = Date.now();
+        this.hidePopover();
+      });
+      w.on("close", (e) => {
+        e.preventDefault();
+        this.hidePopover();
+      });
+    }
     this.position();
-    if (this.ready) this.popover.webContents.send("view", view);
-    this.popover.show();
-    this.popover.focus();
+    this.show(this.popover, true);
   }
   toggle(anchor: Rect) {
-    if (this.popover.isVisible()) this.popover.hide();
-    // Windows blurs the popover before delivering a second tray click.
+    if (this.popover?.isVisible()) this.hidePopover();
     else if (Date.now() - this.blurredAt > 200) this.open(anchor);
   }
   openSettings() {
-    this.popover.hide();
+    this.hidePopover();
+    if (!this.preferences) {
+      const w = this.create(680, 640, "settings");
+      this.preferences = w;
+      w.on("close", (e) => {
+        e.preventDefault();
+        this.closeSettings();
+      });
+    }
     const area = screen.getDisplayNearestPoint(
       screen.getCursorScreenPoint(),
     ).workArea;
@@ -137,14 +171,15 @@ export class Windows {
         area,
       ),
     );
-    this.preferences.show();
-    this.preferences.focus();
+    this.show(this.preferences, true);
   }
   resize(height: number) {
+    if (!this.popover) return;
     this.popover.setSize(320, Math.max(160, Math.min(520, Math.ceil(height))));
     this.position();
   }
   private position() {
+    if (!this.popover) return;
     const anchor = this.anchor ?? screen.getPrimaryDisplay().workArea;
     const area = screen.getDisplayMatching(anchor).workArea;
     this.popover.setBounds(
@@ -154,27 +189,52 @@ export class Windows {
   syncPill() {
     const settings = this.getSettings();
     if (!settings.floatingPillEnabled || !settings.setupCompleted) {
-      this.pill.webContents.setBackgroundThrottling(true);
-      this.pill.hide();
+      this.hide(this.pill);
       return;
     }
-    const primary = screen.getPrimaryDisplay().workArea;
+    if (!this.pill) {
+      const w = this.create(204, 44, "pill");
+      this.pill = w;
+      w.on("close", (e) => {
+        e.preventDefault();
+        this.hidePill();
+      });
+      w.on("will-move", (event, bounds) => {
+        if (
+          this.getSettings().pillPlacement !== "free" ||
+          !this.getSettings().pillShowDragHandle
+        ) {
+          event.preventDefault();
+          return;
+        }
+        this.savePosition({ x: bounds.x, y: bounds.y });
+      });
+      w.webContents.on("context-menu", () =>
+        Menu.buildFromTemplate([
+          { label: "Usage details", click: () => this.open() },
+          { label: "Settings", click: () => this.openSettings() },
+          { type: "separator" },
+          { label: "Hide floating pill", click: this.hidePill },
+        ]).popup({ window: w }),
+      );
+    }
     const { width, height } = pillSize(settings);
     const area = settings.pillPosition
       ? screen.getDisplayNearestPoint(settings.pillPosition).workArea
-      : primary;
+      : screen.getPrimaryDisplay().workArea;
     const p = pinnedPosition(settings, area);
     this.pill.setBounds(clampBounds({ ...p, width, height }, area));
-    this.pill.webContents.setBackgroundThrottling(false);
-    if (!this.pill.isVisible()) this.pill.showInactive();
+    this.pill.webContents.setBackgroundThrottling(
+      settings.pillSwitchSeconds === 0 || settings.pillLayout === "both",
+    );
+    this.show(this.pill, false);
   }
   broadcast(channel: string, data: unknown) {
-    for (const w of [this.popover, this.pill, this.preferences])
-      if (!w.isDestroyed()) w.webContents.send(channel, data);
+    for (const w of this.all()) w.webContents.send(channel, data);
   }
   destroy() {
-    this.popover.destroy();
-    this.pill.destroy();
-    this.preferences.destroy();
+    for (const timer of this.releaseTimers.values()) clearTimeout(timer);
+    this.releaseTimers.clear();
+    for (const w of this.all()) w.destroy();
   }
 }

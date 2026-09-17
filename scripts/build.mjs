@@ -8,6 +8,7 @@ await build({
   platform: "node",
   format: "cjs",
   external: ["electron"],
-  sourcemap: true,
+  sourcemap: false,
+  minify: true,
 });
 await viteBuild();
