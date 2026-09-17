@@ -22,9 +22,7 @@ const launch = () =>
 const app = await launch();
 try {
   let prefs = await getPage(app, "settings");
-  await expect(
-    prefs.getByRole("heading", { name: "Welcome to Koodex" }),
-  ).toBeVisible();
+  await expect(prefs.getByRole("heading", { name: "Koodex" })).toBeVisible();
   await expect.poll(() => visible(app, "settings")).toBe(true);
   assert.equal(await visible(app, "pill"), false);
   await expect(prefs.getByLabel("Switch limits")).toHaveValue("0");
@@ -38,15 +36,21 @@ try {
   await expect(prefs.locator(".pill-reset")).toContainText("Resets in");
   const beforePreview = (await prefs.evaluate(() => window.Koodex.getUsage()))
     .usage.fetchedAt;
-  await prefs.getByRole("button", { name: "Try refresh preview" }).click();
+  await prefs.getByRole("button", { name: "Refresh live preview" }).click();
   await expect(
-    prefs.getByRole("button", { name: "Try refresh preview" }),
+    prefs.getByRole("button", { name: "Refresh live preview" }),
   ).toBeEnabled();
-  assert.equal(
-    (await prefs.evaluate(() => window.Koodex.getUsage())).usage.fetchedAt,
-    beforePreview,
-    "Preview must not refresh live usage",
+  await expect
+    .poll(
+      async () =>
+        (await prefs.evaluate(() => window.Koodex.getUsage())).usage.fetchedAt,
+    )
+    .toBeGreaterThan(beforePreview);
+  const live = await prefs.evaluate(() => window.Koodex.getUsage());
+  await expect(prefs.locator(".metric")).toContainText(
+    `${Math.round(live.usage.windows.find((w) => w.id === "weekly").remainingPercent)}%`,
   );
+  await expect(prefs.getByText("Made by cimanesdev")).toBeVisible();
   await prefs.getByRole("button", { name: "Start Koodex" }).click();
   await expect.poll(() => visible(app, "pill")).toBe(true);
   const pill = await getPage(app, "pill");
@@ -89,9 +93,7 @@ try {
     "Hover should cover the entire pill",
   );
   prefs = await openSettings(app, pill);
-  await expect(
-    prefs.getByRole("heading", { name: "Make it yours" }),
-  ).toBeVisible();
+  await expect(prefs.getByRole("heading", { name: "Koodex" })).toBeVisible();
   await prefs.getByLabel("Switch limits").selectOption("2");
   await prefs.getByRole("button", { name: "Done", exact: false }).click();
   await app.evaluate(({ BrowserWindow }) => {
@@ -112,14 +114,12 @@ try {
   await app.evaluate(() => globalThis.focusTest.destroy());
   prefs = await openSettings(app, pill);
   await prefs.getByLabel("Switch limits").selectOption("0");
-  await prefs.getByRole("button", { name: "Both limits Side by side" }).click();
-  await prefs.getByRole("button", { name: "Appearance", exact: true }).click();
   await prefs
-    .getByRole("button", { name: "Bar below text", exact: true })
+    .getByRole("button", { name: "Both limits Always visible" })
     .click();
+  await prefs.getByRole("button", { name: "Two bars", exact: true }).click();
   await prefs.getByRole("button", { name: "Mint", exact: true }).click();
   for (const [name, value] of [
-    ["Koodex mark", "logo"],
     ["Usage ring", "ring"],
     ["Usage meter", "meter"],
   ]) {
@@ -140,15 +140,16 @@ try {
   );
   assert.ok(Math.abs(size[0] - 316) <= 1 && Math.abs(size[1] - 68) <= 1);
   await expect(pill.locator('[data-accent="mint"]')).toHaveCount(1);
-  // Settings stays put when another window receives focus.
+  // Settings dismisses on focus loss; the pill stays visible.
   await app.evaluate(({ BrowserWindow }) => {
     const w = new BrowserWindow({ width: 80, height: 80, show: true });
     w.focus();
     setTimeout(() => w.destroy(), 200);
   });
   await prefs.waitForTimeout(300);
-  assert.equal(await visible(app, "settings"), true);
-  await prefs.bringToFront();
+  assert.equal(await visible(app, "settings"), false);
+  assert.equal(await visible(app, "pill"), true);
+  prefs = await openSettings(app, pill);
   mkdirSync("assets/screenshots", { recursive: true });
   await prefs.screenshot({
     path: "assets/screenshots/preferences-appearance.png",
@@ -156,7 +157,7 @@ try {
     animations: "disabled",
   });
   await prefs
-    .getByRole("button", { name: "Floating pill", exact: true })
+    .getByRole("button", { name: "Pill & appearance", exact: true })
     .click();
   await prefs.screenshot({
     path: "assets/screenshots/preferences-pill.png",
@@ -170,7 +171,7 @@ try {
     omitBackground: true,
   });
   console.log(
-    "Passed: first-run setup, preview isolation, manual default, explicit auto-switch, countdowns, real refresh, unified hover, tray choices, independent settings.",
+    "Passed: first-run setup, live preview, manual default, explicit auto-switch, countdowns, real refresh, unified hover, tray choices, independent settings.",
   );
 } finally {
   await app.close();

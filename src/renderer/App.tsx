@@ -60,7 +60,7 @@ export function App() {
           now={now}
         />
       ) : preferences ? (
-        <SettingsView settings={settings} now={now} />
+        <SettingsView settings={settings} now={now} state={state} />
       ) : (
         <ExpandedPopover state={state} now={now} refresh={state.refresh} />
       )}

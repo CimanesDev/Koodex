@@ -22,12 +22,11 @@ export class KoodexTray {
     });
   }
   private icon() {
-    const style = this.amounts.every((n) => n < 0) ? "logo" : this.style;
     return nativeImage.createFromPath(
       join(
         app.getAppPath(),
         "assets/tray",
-        `${nativeTheme.shouldUseDarkColors ? "light" : "dark"}-${style}${style === "logo" ? "" : `-dual-${this.amounts[0]}-${this.amounts[1]}`}.png`,
+        `${nativeTheme.shouldUseDarkColors ? "light" : "dark"}-${this.style}-dual-${this.amounts[0]}-${this.amounts[1]}.png`,
       ),
     );
   }

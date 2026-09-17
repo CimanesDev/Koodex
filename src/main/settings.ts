@@ -11,6 +11,14 @@ export function validateSettings(value: unknown): Partial<Settings> {
   if (!value || typeof value !== "object") return {};
   const v = value as Record<string, unknown>;
   const out: Partial<Settings> = {};
+  if (
+    v.pillPinOffset === null ||
+    (typeof v.pillPinOffset === "number" &&
+      Number.isFinite(v.pillPinOffset) &&
+      v.pillPinOffset >= 0 &&
+      v.pillPinOffset <= 1)
+  )
+    out.pillPinOffset = v.pillPinOffset;
   if (v.provider === "codex" || v.provider === "claude")
     out.provider = v.provider;
   if (v.pillBothStyle === "separate" || v.pillBothStyle === "combined")
@@ -23,12 +31,9 @@ export function validateSettings(value: unknown): Partial<Settings> {
     )
   )
     out.pillPlacement = v.pillPlacement as Settings["pillPlacement"];
-  if (
-    v.trayStyle === "meter" ||
-    v.trayStyle === "logo" ||
-    v.trayStyle === "ring"
-  )
+  if (v.trayStyle === "meter" || v.trayStyle === "ring")
     out.trayStyle = v.trayStyle;
+  if (v.trayStyle === "logo") out.trayStyle = "meter";
   if (v.pillLayout === "alternating" || v.pillLayout === "both")
     out.pillLayout = v.pillLayout;
   if (v.pillIndicator === "ring" || v.pillIndicator === "bar")

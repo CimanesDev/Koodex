@@ -40,8 +40,12 @@ try {
         .getBounds(),
     );
   await prefs.evaluate(() => window.Koodex.openSettings());
-  await prefs.getByRole("button", { name: "Both limits Side by side" }).click();
-  await prefs.getByLabel("Both limits style").selectOption("combined");
+  await prefs
+    .getByRole("button", { name: "Both limits Always visible" })
+    .click();
+  await prefs
+    .getByRole("button", { name: "Nested rings", exact: true })
+    .click();
   await prefs
     .getByRole("button", { name: "Indicator only", exact: true })
     .click();
@@ -50,7 +54,7 @@ try {
     .getByLabel("Placement", { exact: true })
     .selectOption("top-right");
   await expect(pill.locator(".dual-ring")).toBeVisible();
-  await expect(pill.locator(".drag-handle")).toHaveCount(0);
+  await expect(pill.locator(".drag-handle")).toHaveCount(1);
   const area = await app.evaluate(
     ({ screen }) => screen.getPrimaryDisplay().workArea,
   );
@@ -62,6 +66,31 @@ try {
   await prefs.screenshot({
     path: "assets/screenshots/preferences-placement.png",
   });
+  // Dispatch the native drag event: the visible grip must move along its pinned edge.
+  const dragged = await app.evaluate(({ BrowserWindow }) => {
+    const w = BrowserWindow.getAllWindows().find((w) =>
+      w.webContents.getURL().includes("view=pill"),
+    );
+    const b = w.getBounds();
+    let prevented = false;
+    w.emit(
+      "will-move",
+      {
+        preventDefault() {
+          prevented = true;
+        },
+      },
+      { ...b, x: b.x - 80, y: b.y + 80 },
+    );
+    return { prevented, bounds: w.getBounds() };
+  });
+  assert.equal(dragged.prevented, true);
+  assert.ok(Math.abs(dragged.bounds.x - (pinned.x - 80)) <= 1);
+  assert.equal(dragged.bounds.y, pinned.y);
+  assert.equal(
+    (await pill.evaluate(() => window.Koodex.getSettings())).pillPlacement,
+    "top-right",
+  );
   let combinations = 0;
   for (const pillPlacement of ["free", "left", "right", "top-center"]) {
     for (const pillContent of ["details", "indicator"]) {
@@ -178,6 +207,10 @@ try {
       { timeout: 4000 },
     )
     .toBe(77);
+  await expect(prefs.getByRole("progressbar")).toHaveAttribute(
+    "aria-valuenow",
+    "77",
+  );
   send(51);
   await expect
     .poll(
@@ -187,6 +220,10 @@ try {
       { timeout: 4000 },
     )
     .toBe(49);
+  await expect(prefs.getByRole("progressbar")).toHaveAttribute(
+    "aria-valuenow",
+    "49",
+  );
   const timestamp = (await pill.evaluate(() => window.Koodex.getUsage())).usage
     .fetchedAt;
   await pill.evaluate(() => window.Koodex.refreshUsage());
@@ -218,6 +255,24 @@ try {
   await expect(pill.locator(".dual-ring")).toBeVisible();
   await pill.screenshot({
     path: "assets/screenshots/pill-dual-ring.png",
+    omitBackground: true,
+  });
+  await update({
+    pillIndicator: "bar",
+    pillPlacement: "left",
+    pillShowDragHandle: true,
+  });
+  await expect(pill.locator(".dual-bars-vertical")).toBeVisible();
+  const barRects = await pill.locator(".dual-bars .bar").evaluateAll((bars) =>
+    bars.map((bar) => {
+      const r = bar.getBoundingClientRect();
+      return { width: r.width, height: r.height, x: r.x, y: r.y };
+    }),
+  );
+  assert.ok(barRects.every((r) => r.height > r.width * 5));
+  assert.ok(barRects[0].x < barRects[1].x && barRects[0].y === barRects[1].y);
+  await pill.screenshot({
+    path: "assets/screenshots/pill-side-bars.png",
     omitBackground: true,
   });
   console.log(

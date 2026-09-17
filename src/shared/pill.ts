@@ -1,8 +1,7 @@
 import type { Settings } from "./types";
 export const isVertical = (settings: Settings) =>
   settings.pillPlacement === "left" || settings.pillPlacement === "right";
-export const hasGrip = (settings: Settings) =>
-  settings.pillPlacement === "free" && settings.pillShowDragHandle;
+export const hasGrip = (settings: Settings) => settings.pillShowDragHandle;
 export function pillSize(settings: Settings) {
   const both = settings.pillLayout === "both",
     minimal = settings.pillContent === "indicator",
@@ -13,8 +12,9 @@ export function pillSize(settings: Settings) {
     if (minimal)
       return vertical
         ? {
-            width: settings.pillIndicator === "ring" ? 44 : 104,
-            height: 44 + refresh,
+            width: settings.pillIndicator === "ring" ? 44 : 36,
+            height:
+              (settings.pillIndicator === "ring" ? 44 : 112) + grip + refresh,
           }
         : {
             width:
@@ -24,7 +24,11 @@ export function pillSize(settings: Settings) {
     return vertical
       ? {
           width: 142,
-          height: 112 + (settings.pillShowReset ? 32 : 0) + refresh,
+          height:
+            (settings.pillIndicator === "ring" ? 112 : 160) +
+            (settings.pillShowReset ? 32 : 0) +
+            grip +
+            refresh,
         }
       : {
           width: 224 + (hasGrip(settings) ? 0 : -12) + refresh,
@@ -37,6 +41,7 @@ export function pillSize(settings: Settings) {
         width: settings.pillIndicator === "ring" ? 44 : 36,
         height:
           (settings.pillIndicator === "ring" ? (both ? 80 : 44) : 112) +
+          grip +
           refresh,
       };
     return {
@@ -58,6 +63,7 @@ export function pillSize(settings: Settings) {
       width: 132,
       height:
         (both ? 152 : 84) +
+        grip +
         (settings.pillShowReset ? (both ? 32 : 16) : 0) +
         refresh,
     };
@@ -83,6 +89,25 @@ export function pinnedPosition(settings: Settings, area: WorkArea) {
   const left = area.x + gap,
     right = area.x + area.width - width - gap,
     top = area.y + gap;
+  if (settings.pillPlacement !== "free" && settings.pillPinOffset !== null) {
+    return isVertical(settings)
+      ? {
+          x: settings.pillPlacement === "left" ? left : right,
+          y: Math.round(
+            top +
+              Math.max(0, area.height - height - gap * 2) *
+                settings.pillPinOffset,
+          ),
+        }
+      : {
+          x: Math.round(
+            left +
+              Math.max(0, area.width - width - gap * 2) *
+                settings.pillPinOffset,
+          ),
+          y: top,
+        };
+  }
   switch (settings.pillPlacement) {
     case "top-left":
       return { x: left, y: top };
@@ -102,4 +127,18 @@ export function pinnedPosition(settings: Settings, area: WorkArea) {
         }
       );
   }
+}
+
+export function pinOffsetForDrag(
+  settings: Settings,
+  point: { x: number; y: number },
+  area: WorkArea,
+) {
+  const size = pillSize(settings),
+    vertical = isVertical(settings);
+  const distance = vertical ? point.y - area.y - 12 : point.x - area.x - 12;
+  const length = vertical
+    ? area.height - size.height - 24
+    : area.width - size.width - 24;
+  return Math.max(0, Math.min(1, distance / Math.max(1, length)));
 }

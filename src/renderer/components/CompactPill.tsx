@@ -92,7 +92,11 @@ export function CompactPill({
               )
               .join("\n")}
           >
-            <DualIndicator windows={quotas} style={settings.pillIndicator} />
+            <DualIndicator
+              windows={quotas}
+              style={settings.pillIndicator}
+              vertical={vertical}
+            />
             {!minimal && (
               <div className="combined-labels">{quotas.map(metric)}</div>
             )}
@@ -133,7 +137,11 @@ export function CompactPill({
       {hasGrip(settings) && (
         <div
           className="drag-handle"
-          title="Drag to move · right-click for settings"
+          title={
+            settings.pillPlacement === "free"
+              ? "Drag to move · right-click for settings"
+              : "Drag along this screen edge · right-click for settings"
+          }
           aria-hidden="true"
         >
           ⠿
@@ -156,8 +164,8 @@ export function CompactPill({
       {settings.pillShowRefresh && (
         <button
           className="pill-refresh"
-          aria-label={preview ? "Try refresh preview" : "Refresh usage"}
-          title={preview ? "Preview refresh" : "Refresh usage now"}
+          aria-label={preview ? "Refresh live preview" : "Refresh usage"}
+          title="Refresh usage now"
           disabled={
             state.syncState === "refreshing" || state.syncState === "connecting"
           }

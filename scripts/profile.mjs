@@ -110,7 +110,7 @@ try {
       await pill.evaluate(() => window.Koodex.openSettings());
       const reopened = await page("settings");
       await expect(
-        reopened.getByRole("heading", { name: "Make it yours" }),
+        reopened.getByRole("heading", { name: "Koodex" }),
       ).toBeVisible();
       await reopened.evaluate(() => window.Koodex.closeSettings());
       await expect

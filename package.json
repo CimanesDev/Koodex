@@ -1,10 +1,10 @@
 {
   "name": "koodex",
   "productName": "Koodex",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "private": true,
   "description": "A quiet Codex usage companion for Windows",
-  "author": "Koodex contributors",
+  "author": "cimanesdev",
   "license": "MIT",
   "main": "dist/main/main.js",
   "scripts": {

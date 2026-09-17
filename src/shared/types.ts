@@ -31,13 +31,14 @@ export interface Settings {
   pillIndicator: "ring" | "bar";
   pillContent: "details" | "indicator";
   pillShowDragHandle: boolean;
+  pillPinOffset: number | null;
   pillPlacement:
     "free" | "top-left" | "top-center" | "top-right" | "left" | "right";
   pillSwitchSeconds: 0 | 2 | 3 | 5;
   accentColor: "neutral" | "blue" | "mint" | "lavender" | "rose";
   pillShowReset: boolean;
   pillShowRefresh: boolean;
-  trayStyle: "meter" | "logo" | "ring";
+  trayStyle: "meter" | "ring";
   setupCompleted: boolean;
   settingsVersion: number;
   pillPosition?: { x: number; y: number };
@@ -53,6 +54,7 @@ export const defaults: Settings = {
   pillIndicator: "ring",
   pillContent: "details",
   pillShowDragHandle: true,
+  pillPinOffset: null,
   pillPlacement: "free",
   pillSwitchSeconds: 0,
   accentColor: "neutral",

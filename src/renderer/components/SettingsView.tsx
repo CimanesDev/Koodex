@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Settings, Snapshot } from "../../shared/types";
 import { pillSize } from "../../shared/pill";
 import { CompactPill } from "./CompactPill";
-import { BrandMark, TraySymbol } from "./Icons";
+import { BrandMark, TraySymbol, PillStyleSymbol } from "./Icons";
 
 const colors = [
   ["neutral", "Neutral", "#eeeeee"],
@@ -22,9 +22,11 @@ const placements = [
 export function SettingsView({
   settings: incomingSettings,
   now,
+  state,
 }: {
   settings: Settings;
   now: number;
+  state: Snapshot;
 }) {
   const [settings, setSettings] = useState(incomingSettings);
   const pending = useRef(0);
@@ -34,36 +36,7 @@ export function SettingsView({
   const [tab, setTab] = useState("pill");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
   const [claudeConfig, setClaudeConfig] = useState("");
-  const refreshTimer = useRef<ReturnType<typeof setTimeout> | undefined>(
-    undefined,
-  );
-  const sample = useRef<Snapshot>({
-    syncState: "synced",
-    usage: {
-      fetchedAt: now,
-      windows: [
-        {
-          id: "five-hour",
-          label: "5-hour",
-          remainingPercent: 68,
-          usedPercent: 32,
-          windowMinutes: 300,
-          resetsAt: now + 138 * 60000,
-        },
-        {
-          id: "weekly",
-          label: "Weekly",
-          remainingPercent: 42,
-          usedPercent: 58,
-          windowMinutes: 10080,
-          resetsAt: now + 86 * 3600000,
-        },
-      ],
-    },
-  });
-  useEffect(() => () => clearTimeout(refreshTimer.current), []);
   async function update(patch: Partial<Settings>) {
     pending.current++;
     setSettings((previous) => ({ ...previous, ...patch }));
@@ -129,13 +102,11 @@ export function SettingsView({
         <div className="brand-lockup">
           <BrandMark />
           <div>
-            <h1>
-              {settings.setupCompleted ? "Make it yours" : "Welcome to Koodex"}
-            </h1>
+            <h1>Koodex</h1>
             <p>
               {settings.setupCompleted
-                ? "Small details. Your way."
-                : "A little less checking. A little more focus."}
+                ? "Your usage, at a glance."
+                : "Welcome. Let’s set up your floating pill."}
             </p>
           </div>
         </div>
@@ -150,7 +121,14 @@ export function SettingsView({
       <section className="preview-stage" aria-label="Pill preview">
         <div className="preview-caption">
           <span>YOUR FLOATING PILL</span>
-          <span>Sample values · click to try</span>
+          <span>
+            {settings.provider === "claude" ? "Claude Code" : "Codex"} ·{" "}
+            {state.syncState === "synced"
+              ? "Live usage"
+              : state.usage
+                ? "Last reported usage"
+                : "Waiting for usage"}
+          </span>
         </div>
         <div
           className="preview-pill-wrap"
@@ -168,27 +146,32 @@ export function SettingsView({
             }}
           >
             <CompactPill
-              state={{
-                ...sample.current,
-                syncState: refreshing ? "refreshing" : "synced",
-              }}
+              state={
+                state.provider && state.provider !== settings.provider
+                  ? {
+                      usage: null,
+                      syncState: "connecting",
+                      provider: settings.provider,
+                    }
+                  : state
+              }
               paused={false}
               settings={settings}
               now={now}
               preview
-              refresh={async () => {
-                setRefreshing(true);
-                refreshTimer.current = setTimeout(
-                  () => setRefreshing(false),
-                  600,
-                );
-              }}
             />
           </div>
         </div>
         <p>
           {settings.pillLayout === "both"
-            ? "Both limits, always in view."
+            ? settings.pillBothStyle === "combined"
+              ? settings.pillIndicator === "ring"
+                ? "5-hour outside. Weekly inside."
+                : settings.pillPlacement === "left" ||
+                    settings.pillPlacement === "right"
+                  ? "5-hour on the left. Weekly on the right."
+                  : "5-hour above. Weekly below."
+              : "Both limits, always in view."
             : settings.pillSwitchSeconds === 0
               ? "One limit at a time. Left-click to switch."
               : `Switches every ${settings.pillSwitchSeconds} seconds. Click any time.`}
@@ -196,8 +179,7 @@ export function SettingsView({
       </section>
       <nav className="preferences-tabs" aria-label="Settings sections">
         {[
-          ["pill", "Floating pill"],
-          ["appearance", "Appearance"],
+          ["pill", "Pill & appearance"],
           ["placement", "Placement"],
           ["providers", "Providers"],
           ["general", "General"],
@@ -219,7 +201,7 @@ export function SettingsView({
               >
                 {[
                   ["alternating", "One limit", "Click to switch"],
-                  ["both", "Both limits", "Side by side"],
+                  ["both", "Both limits", "Always visible"],
                 ].map(([id, label, description]) => (
                   <button
                     className="choice-card"
@@ -280,28 +262,71 @@ export function SettingsView({
                   </select>
                 </label>
               )}
-              {settings.pillLayout === "both" && (
-                <label className="select-row">
-                  <span>Both limits style</span>
-                  <select
-                    aria-label="Both limits style"
-                    value={settings.pillBothStyle}
-                    onChange={(e) =>
+              <h2 className="section-gap">Progress style</h2>
+              <div
+                className="style-choices"
+                role="group"
+                aria-label="Progress style"
+              >
+                {(
+                  [
+                    [
+                      "bar",
+                      "separate",
+                      settings.pillLayout === "both" ? "Two bars" : "Bar",
+                    ],
+                    [
+                      "ring",
+                      "separate",
+                      settings.pillLayout === "both" ? "Two rings" : "Ring",
+                    ],
+                    ...(settings.pillLayout === "both"
+                      ? [
+                          ["bar", "combined", "Stacked bars"],
+                          ["ring", "combined", "Nested rings"],
+                        ]
+                      : []),
+                  ] as const
+                ).map(([indicator, bothStyle, label]) => (
+                  <button
+                    key={label}
+                    className="style-choice"
+                    aria-label={label}
+                    aria-pressed={
+                      settings.pillIndicator === indicator &&
+                      (settings.pillLayout !== "both" ||
+                        settings.pillBothStyle === bothStyle)
+                    }
+                    onClick={() =>
                       void update({
-                        pillBothStyle: e.target
-                          .value as Settings["pillBothStyle"],
+                        pillIndicator: indicator as Settings["pillIndicator"],
+                        pillBothStyle: bothStyle as Settings["pillBothStyle"],
                       })
                     }
                   >
-                    <option value="separate">Separate indicators</option>
-                    <option value="combined">
-                      {settings.pillIndicator === "ring"
-                        ? "Outer + inner ring"
-                        : "Stacked bars (=)"}
-                    </option>
-                  </select>
-                </label>
-              )}
+                    <PillStyleSymbol
+                      indicator={indicator as Settings["pillIndicator"]}
+                      combined={bothStyle === "combined"}
+                      both={settings.pillLayout === "both"}
+                      vertical={
+                        settings.pillPlacement === "left" ||
+                        settings.pillPlacement === "right"
+                      }
+                    />
+                    <span>{label}</span>
+                    <small>
+                      {bothStyle === "combined"
+                        ? indicator === "ring"
+                          ? "Outer + inner"
+                          : settings.pillPlacement === "left" ||
+                              settings.pillPlacement === "right"
+                            ? "Vertical pair"
+                            : "Equal sign"
+                        : "Separate indicators"}
+                    </small>
+                  </button>
+                ))}
+              </div>
               <p className="preference-note">
                 {settings.pillContent === "indicator"
                   ? "Hover for percentages and reset times. Click to switch limits."
@@ -326,40 +351,6 @@ export function SettingsView({
                 "Quick refresh",
                 "Add a refresh button to the pill.",
               )}
-            </section>
-          </div>
-        )}
-        {tab === "appearance" && (
-          <div className="preferences-grid">
-            <section>
-              <h2>Progress style</h2>
-              <div
-                className="choice-grid"
-                role="group"
-                aria-label="Progress style"
-              >
-                {[
-                  ["ring", "Ring"],
-                  ["bar", "Bar below text"],
-                ].map(([id, label]) => (
-                  <button
-                    className="choice-card"
-                    key={id}
-                    aria-pressed={settings.pillIndicator === id}
-                    onClick={() =>
-                      void update({
-                        pillIndicator: id as Settings["pillIndicator"],
-                      })
-                    }
-                  >
-                    <span
-                      className={`indicator-example indicator-${id}`}
-                      aria-hidden="true"
-                    />
-                    <strong>{label}</strong>
-                  </button>
-                ))}
-              </div>
               <h2 className="section-gap">Accent color</h2>
               <div
                 className="color-choices"
@@ -384,7 +375,7 @@ export function SettingsView({
                 Low limits still turn amber or red.
               </p>
             </section>
-            <section>
+            <section className="tray-section">
               <h2>System tray icon</h2>
               <div
                 className="tray-choices"
@@ -393,7 +384,6 @@ export function SettingsView({
               >
                 {[
                   ["meter", "Usage meter", "Top: 5-hour. Bottom: weekly."],
-                  ["logo", "Koodex mark", "A simple, static ring."],
                   ["ring", "Usage ring", "Outer: 5-hour. Inner: weekly."],
                 ].map(([id, label, description]) => (
                   <button
@@ -474,12 +464,11 @@ export function SettingsView({
                 "Show drag grip",
                 settings.pillPlacement === "free"
                   ? "Hide it to lock your current free position."
-                  : "Pinned positions hide the grip automatically.",
-                settings.pillPlacement !== "free",
+                  : "Drag along the screen edge without unpinning.",
               )}
               <p className="preference-note">
-                Your free position is remembered when you pin the pill. Pins use
-                the monitor where you last placed it.
+                Pins keep their screen edge while you drag. Hide the grip to
+                lock the position. Your previous free position is remembered.
               </p>
             </section>
           </div>
@@ -634,6 +623,7 @@ export function SettingsView({
       </div>
       <footer className="preferences-footer">
         <span>
+          <span className="maker-credit">Made by cimanesdev</span>
           {error ? (
             <span role="alert" className="save-error">
               {error}

@@ -160,6 +160,11 @@ if (!app.requestSingleInstanceLock()) {
       if (clean.launchAtStartup !== undefined)
         setStartup(clean.launchAtStartup);
       const next = { ...settings, ...clean };
+      if (
+        clean.pillPlacement !== undefined &&
+        clean.pillPlacement !== settings.pillPlacement
+      )
+        next.pillPinOffset = null;
       store.write("settings", next);
       const providerChanged = next.provider !== settings.provider;
       settings = next;
@@ -189,8 +194,11 @@ if (!app.requestSingleInstanceLock()) {
     }
     windows = new Windows(
       () => settings,
-      (p) => {
-        settings = { ...settings, pillPosition: p };
+      (p, pinOffset) => {
+        settings =
+          pinOffset === undefined
+            ? { ...settings, pillPosition: p }
+            : { ...settings, pillPinOffset: pinOffset };
         persist("settings", settings);
       },
       () => update({ floatingPillEnabled: false }),

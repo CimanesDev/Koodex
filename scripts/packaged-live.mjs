@@ -20,7 +20,7 @@ const env = {
 delete env.ELECTRON_RUN_AS_NODE;
 delete env.KOODEX_MOCK;
 const app = await electron.launch({
-  executablePath: resolve("release/1.4.0/win-unpacked/Koodex.exe"),
+  executablePath: resolve("release/1.5.0/win-unpacked/Koodex.exe"),
   args: [],
   env,
 });

@@ -1,7 +1,7 @@
 appId: com.koodex.desktop
 productName: Koodex
 directories:
-  output: release/1.4.0
+  output: release/1.5.0
 electronLanguages:
   - en-US
 compression: maximum
@@ -12,7 +12,6 @@ files:
   - assets/icons/koodex.ico
   - assets/claude-bridge.cjs
   - assets/tray/*-dual-*.png
-  - assets/tray/*-logo.png
   - package.json
 win:
   icon: assets/icons/koodex.ico
@@ -21,8 +20,17 @@ win:
     - portable
 nsis:
   artifactName: "Koodex-${version}-${arch}-nsis.${ext}"
-  oneClick: true
+  oneClick: false
   perMachine: false
+  allowElevation: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: false
+  installerHeader: build/installerHeader.bmp
+  installerSidebar: build/installerSidebar.bmp
+  uninstallerSidebar: build/installerSidebar.bmp
+  include: build/installer.nsh
+  installerLanguages:
+    - en_US
   deleteAppDataOnUninstall: false
 portable:
   artifactName: "Koodex-${version}-${arch}-portable.${ext}"

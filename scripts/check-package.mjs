@@ -12,8 +12,6 @@ for (const path of [
   "/dist/renderer/index.html",
   "/assets/icons/koodex.ico",
   "/assets/claude-bridge.cjs",
-  "/assets/tray/light-logo.png",
-  "/assets/tray/dark-logo.png",
 ])
   assert.ok(files.includes(path), `Missing runtime file: ${path}`);
 assert.ok(

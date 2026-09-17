@@ -39,7 +39,7 @@ function image(size, style, color, amount = 7, app = false, weekly = 4) {
               [amount, 0.26],
               [weekly, 0.61],
             ]) {
-              if (level < 0) continue;
+              if (level < 0 && !(amount < 0 && weekly < 0)) continue;
               if (rounded(px, py, 0.1, top, 0.8, 0.14, 0.04))
                 c = [...color, 65];
               if (
@@ -53,9 +53,9 @@ function image(size, style, color, amount = 7, app = false, weekly = 4) {
               angle =
                 (Math.atan2(py - 0.5, px - 0.5) + Math.PI * 2.5) %
                 (Math.PI * 2);
-            if (amount >= 0 && d > 0.355 && d < 0.455)
+            if ((amount >= 0 || weekly < 0) && d > 0.355 && d < 0.455)
               c = [...color, angle < (Math.PI * 2 * amount) / 10 ? 255 : 55];
-            if (weekly >= 0 && d > 0.17 && d < 0.27)
+            if ((weekly >= 0 || amount < 0) && d > 0.17 && d < 0.27)
               c = [...color, angle < (Math.PI * 2 * weekly) / 10 ? 255 : 55];
           }
           for (let i = 0; i < 4; i++) sum[i] += c[i];

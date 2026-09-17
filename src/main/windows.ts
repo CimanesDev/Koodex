@@ -2,7 +2,7 @@ import { app, BrowserWindow, screen, Menu, type WebContents } from "electron";
 import { join } from "node:path";
 import type { Settings } from "../shared/types";
 import { clampBounds, nearAnchor, type Rect } from "./positioning";
-import { pillSize, pinnedPosition } from "../shared/pill";
+import { pillSize, pinnedPosition, pinOffsetForDrag } from "../shared/pill";
 
 export class Windows {
   popover?: BrowserWindow;
@@ -15,7 +15,10 @@ export class Windows {
   private releaseTimers = new Map<BrowserWindow, NodeJS.Timeout>();
   constructor(
     private getSettings: () => Settings,
-    private savePosition: (p: { x: number; y: number }) => void,
+    private savePosition: (
+      p: { x: number; y: number },
+      pinOffset?: number,
+    ) => void,
     private hidePill: () => void,
   ) {
     const reposition = () => {
@@ -148,8 +151,9 @@ export class Windows {
   openSettings() {
     this.hidePopover();
     if (!this.preferences) {
-      const w = this.create(680, 640, "settings");
+      const w = this.create(740, 760, "settings");
       this.preferences = w;
+      w.on("blur", () => this.closeSettings());
       w.on("close", (e) => {
         e.preventDefault();
         this.closeSettings();
@@ -158,8 +162,8 @@ export class Windows {
     const area = screen.getDisplayNearestPoint(
       screen.getCursorScreenPoint(),
     ).workArea;
-    const width = Math.min(680, area.width),
-      height = Math.min(640, area.height);
+    const width = Math.min(740, area.width),
+      height = Math.min(760, area.height);
     this.preferences.setBounds(
       clampBounds(
         {
@@ -200,14 +204,19 @@ export class Windows {
         this.hidePill();
       });
       w.on("will-move", (event, bounds) => {
-        if (
-          this.getSettings().pillPlacement !== "free" ||
-          !this.getSettings().pillShowDragHandle
-        ) {
+        if (!this.getSettings().pillShowDragHandle) {
           event.preventDefault();
           return;
         }
-        this.savePosition({ x: bounds.x, y: bounds.y });
+        const current = this.getSettings();
+        if (current.pillPlacement !== "free") {
+          event.preventDefault();
+          const area = screen.getDisplayMatching(w.getBounds()).workArea;
+          const offset = pinOffsetForDrag(current, bounds, area);
+          const p = pinnedPosition({ ...current, pillPinOffset: offset }, area);
+          w.setBounds(clampBounds({ ...bounds, ...p }, area));
+          this.savePosition(p, offset);
+        } else this.savePosition({ x: bounds.x, y: bounds.y });
       });
       w.webContents.on("context-menu", () =>
         Menu.buildFromTemplate([

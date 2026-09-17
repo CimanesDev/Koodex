@@ -5,19 +5,22 @@ import { UsageBar } from "./UsageBar";
 export function DualIndicator({
   windows,
   style,
+  vertical = false,
 }: {
   windows: UsageWindow[];
   style: "ring" | "bar";
+  vertical?: boolean;
 }) {
   const items = orderedQuotas(windows);
   if (style === "bar")
     return (
-      <div className="dual-bars">
+      <div className={`dual-bars ${vertical ? "dual-bars-vertical" : ""}`}>
         {items.map((w) => (
           <div
             key={w.id}
             style={{
-              gridRow: w.id === "weekly" || w.windowMinutes === 10080 ? 2 : 1,
+              [vertical ? "gridColumn" : "gridRow"]:
+                w.id === "weekly" || w.windowMinutes === 10080 ? 2 : 1,
             }}
           >
             <UsageBar label={w.label} value={w.remainingPercent} />

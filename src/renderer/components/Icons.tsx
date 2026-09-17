@@ -24,7 +24,7 @@ export function RefreshIcon() {
     </svg>
   );
 }
-export function TraySymbol({ style }: { style: "meter" | "logo" | "ring" }) {
+export function TraySymbol({ style }: { style: "meter" | "ring" }) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -49,8 +49,6 @@ export function TraySymbol({ style }: { style: "meter" | "logo" | "ring" }) {
             strokeLinecap="round"
           />
         </>
-      ) : style === "logo" ? (
-        <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="2.5" />
       ) : (
         <>
           <circle
@@ -81,6 +79,119 @@ export function TraySymbol({ style }: { style: "meter" | "logo" | "ring" }) {
             strokeWidth="2"
             strokeLinecap="round"
           />
+        </>
+      )}
+    </svg>
+  );
+}
+
+export function PillStyleSymbol({
+  indicator,
+  combined,
+  both,
+  vertical,
+}: {
+  indicator: "ring" | "bar";
+  combined: boolean;
+  both: boolean;
+  vertical: boolean;
+}) {
+  return (
+    <svg
+      viewBox="0 0 80 40"
+      width="80"
+      height="40"
+      fill="none"
+      aria-hidden="true"
+      className="pill-style-symbol"
+    >
+      {indicator === "ring" ? (
+        combined && both ? (
+          <>
+            <circle
+              cx="40"
+              cy="20"
+              r="15"
+              stroke="currentColor"
+              strokeWidth="3"
+              opacity=".25"
+            />
+            <circle
+              cx="40"
+              cy="20"
+              r="8"
+              stroke="currentColor"
+              strokeWidth="3"
+              opacity=".25"
+            />
+            <path
+              d="M40 5a15 15 0 1 1-15 15M40 12a8 8 0 0 1 8 8"
+              stroke="currentColor"
+              strokeWidth="3"
+              strokeLinecap="round"
+            />
+          </>
+        ) : (
+          <>
+            {(both ? [23, 57] : [40]).map((x) => (
+              <g key={x}>
+                <circle
+                  cx={x}
+                  cy="20"
+                  r="12"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                  opacity=".25"
+                />
+                <circle
+                  cx={x}
+                  cy="20"
+                  r="12"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                  pathLength="100"
+                  strokeDasharray="65 100"
+                  transform={`rotate(-90 ${x} 20)`}
+                />
+              </g>
+            ))}
+          </>
+        )
+      ) : combined && both ? (
+        <g>
+          <path
+            d={vertical ? "M34 5v30M46 5v30" : "M15 14h50M15 26h50"}
+            stroke="currentColor"
+            opacity=".25"
+            strokeWidth="4"
+            strokeLinecap="round"
+          />
+          <path
+            d={vertical ? "M34 35v-21M46 35v-13" : "M15 14h35M15 26h22"}
+            stroke="currentColor"
+            strokeWidth="4"
+            strokeLinecap="round"
+          />
+        </g>
+      ) : (
+        <>
+          {(both ? [7, 45] : [15]).map((x) => (
+            <g key={x}>
+              <path
+                d={`M${x} 20h${both ? 28 : 50}`}
+                stroke="currentColor"
+                opacity=".25"
+                strokeWidth="4"
+                strokeLinecap="round"
+              />
+              <path
+                d={`M${x} 20h${both ? 18 : 35}`}
+                stroke="currentColor"
+                strokeWidth="4"
+                strokeLinecap="round"
+              />
+            </g>
+          ))}
         </>
       )}
     </svg>

@@ -4,7 +4,12 @@ import { adaptUsage } from "../src/main/codex/usageAdapter";
 import { priority, resetIn } from "../src/shared/format";
 import { validateSettings, migrateSettings } from "../src/main/settings";
 import { defaults } from "../src/shared/types";
-import { pillSize, pinnedPosition, hasGrip } from "../src/shared/pill";
+import {
+  pillSize,
+  pinnedPosition,
+  hasGrip,
+  pinOffsetForDrag,
+} from "../src/shared/pill";
 import { trayLevels, orderedQuotas } from "../src/shared/quotas";
 import { collectAlerts } from "../src/main/notifications";
 import { nearAnchor, clampBounds } from "../src/main/positioning";
@@ -46,7 +51,7 @@ test("pins use work area and leave free positions untouched", () => {
   const position = pinnedPosition(settings, area);
   assert.equal(position.x, area.x + area.width - pillSize(settings).width - 12);
   assert.equal(position.y, 52);
-  assert.equal(hasGrip(settings), false);
+  assert.equal(hasGrip(settings), true);
   assert.deepEqual(
     pinnedPosition({ ...settings, pillPlacement: "free" }, area),
     { x: -700, y: 800 },
@@ -68,7 +73,7 @@ test("indicator-only rings and side bars have compact native geometry", () => {
       pillPlacement: "left",
       pillIndicator: "bar",
     }),
-    { width: 36, height: 112 },
+    { width: 36, height: 132 },
   );
   assert.deepEqual(
     pillSize({
@@ -79,7 +84,7 @@ test("indicator-only rings and side bars have compact native geometry", () => {
       pillLayout: "both",
       pillBothStyle: "combined",
     }),
-    { width: 44, height: 44 },
+    { width: 44, height: 64 },
   );
 });
 test("legacy installs migrate once without reopening setup", () => {
@@ -94,6 +99,22 @@ test("legacy installs migrate once without reopening setup", () => {
   assert.equal(settings.floatingPillEnabled, false);
   const optedIn = migrateSettings({ ...settings, pillSwitchSeconds: 5 });
   assert.equal(optedIn.pillSwitchSeconds, 5);
+});
+test("legacy static icons become meters and pinned dragging stays on its edge", () => {
+  assert.equal(migrateSettings({ trayStyle: "logo" }).trayStyle, "meter");
+  const area = { x: -1200, y: 20, width: 1200, height: 800 };
+  const settings = {
+    ...defaults,
+    pillPlacement: "left" as const,
+    pillPosition: { x: 200, y: 300 },
+  };
+  const offset = pinOffsetForDrag(settings, { x: 500, y: 450 }, area);
+  const p = pinnedPosition({ ...settings, pillPinOffset: offset }, area);
+  assert.equal(p.x, -1188);
+  assert.equal(p.y, 450);
+  assert.deepEqual(settings.pillPosition, { x: 200, y: 300 });
+  assert.equal(pinOffsetForDrag(settings, { x: 500, y: -100 }, area), 0);
+  assert.equal(pinOffsetForDrag(settings, { x: 500, y: 2000 }, area), 1);
 });
 test("interrupted setup stays pending on next launch", () => {
   assert.equal(

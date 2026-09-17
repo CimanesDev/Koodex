@@ -42,7 +42,7 @@ try {
   assert.ok(await page.getByText("68", { exact: false }).count());
   await page.getByRole("button", { name: "Settings", exact: true }).click();
   const preferences = await getPage(app, "settings");
-  await preferences.getByRole("heading", { name: "Make it yours" }).waitFor();
+  await preferences.getByRole("heading", { name: "Koodex" }).waitFor();
   const pillSwitch = preferences.getByRole("switch", {
     name: "Show floating pill",
     exact: true,

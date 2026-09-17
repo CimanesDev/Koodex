@@ -9,10 +9,10 @@ A quiet Windows tray companion for Codex and optional Claude Code quota reports.
 - Optional countdowns and a one-click refresh button on the pill.
 - Ring or bar indicators, five accent colors, and a unified hover surface.
 - A simple ring logo. Dual tray bars (top: 5-hour, bottom: weekly) or concentric rings (outer: 5-hour, inner: weekly).
-- Indicator-only pills, combined or separate indicators, optional drag grip, and top/side screen pins.
+- Indicator-only pills, combined or separate indicators, optional grips on every placement, and top/side pins that drag along their edge.
 - Optional Claude Code status-line bridge with local change detection and explicit report freshness.
-- Separate preferences window with an interactive, exact-size pill preview.
-- First-run setup, local caching, automatic reconnect, and optional startup and alerts.
+- Unified pill and appearance controls with visual style cards and a live usage preview.
+- Branded setup wizard, first-run preferences, local caching, automatic reconnect, and optional startup and alerts. Made by cimanesdev.
 
 ![Koodex preferences](assets/screenshots/preferences-appearance.png)
 
@@ -28,21 +28,20 @@ Packages include only the English Chromium locale, required runtime assets, and 
 
 ## Getting started
 
-Run the installer or portable executable. On first launch, choose your preferences in the welcome screen, try the preview, and click **Start Koodex**. The preview uses clearly labeled sample values and never refreshes your real account.
+Run the installer for a branded welcome, installation-location choice, and completion screen, or use the portable executable. On first launch, choose your preferences under the Koodex header and click **Start Koodex**. The preview uses the selected provider's actual reports, including unavailable or stale states. Its refresh button refreshes real usage; clicking its one-limit display changes only the preview selection.
 
-Click the tray icon for usage details. Right-click the floating pill for **Settings** or **Usage details**. Settings has its own window; **Done**, Close, and Escape dismiss it without opening usage details. It stays open when another app gets focus. The usage popup still dismisses on click-away.
+Click the tray icon for usage details. Right-click the floating pill for **Settings** or **Usage details**. Settings has its own window; **Done**, Close, and Escape dismiss it without opening usage details. Settings and the usage popup dismiss when another window or the desktop gets focus. The floating pill remains visible.
 
 In settings:
 
-- **Floating pill:** choose one or both limits, separate or combined indicators, text or indicator-only, click-only or automatic switching, countdowns, and quick refresh.
-- **Appearance:** choose progress style, accent, and tray icon.
-- **Placement:** pin top left/center/right or vertically on either side; hide the grip to lock a free position. Preview updates immediately.
+- **Pill & appearance:** choose one or both limits, text or indicator-only, visual style cards (two bars, stacked bars, two rings, nested rings), accent, countdowns, quick refresh, switching behavior, and a usage meter/ring for the tray.
+- **Placement:** pin top left/center/right or vertically on either side. Keep the grip visible to move along the pinned edge, or hide it to lock the position. Returning to free placement restores the previous free position. Changing the pin preset resets its edge offset.
 - **Providers:** choose Codex or prepare the optional Claude Code bridge. One provider is displayed at a time.
 - **General:** configure startup, low-usage alerts, and background refresh frequency.
 
 One-limit mode is **click-only by default**. Automatic cycling starts only if you choose an interval. Upgrading from 1.0/1.1 turns off the old implicit auto-switch once; subsequent explicit choices are preserved. Existing users keep their other preferences and skip the welcome screen.
 
-Quick refresh requests a Codex snapshot or rereads the last Claude report. It cannot reset a quota. Tray bars and rings show both limits independently, rounded to 10% steps; the tooltip shows exact reported percentages. Top/outer always means 5-hour, bottom/inner means weekly, even when the other quota is absent. The static mark is a simple ring.
+Quick refresh requests a Codex snapshot or rereads the last Claude report. It cannot reset a quota. Tray bars and rings show both limits independently, rounded to 10% steps; the tooltip shows exact reported percentages. Top/outer always means 5-hour, bottom/inner means weekly, even when the other quota is absent. The static tray mark has been removed; previous mark selections migrate to the usage meter. With no data, the chosen usage icon shows empty tracks. Side-mounted combined bars are vertical: 5-hour on the left, weekly on the right.
 
 For faster Codex updates, select **General > Refresh interval > Live · every 10 seconds**. New installs default to this; upgrades preserve the saved interval. Usage events trigger immediate reads, but server reporting may lag. This is near-real-time, not a guarantee of token-by-token updates.
 
@@ -90,15 +89,15 @@ npm run build
 npm run dist
 ```
 
-Version 1.4 outputs in `release/1.4.0/`:
+Version 1.5 outputs in `release/1.5.0/`:
 
-- `Koodex-1.4.0-x64-nsis.exe` - per-user installer, no administrator privileges required.
-- `Koodex-1.4.0-x64-portable.exe` - standalone launcher.
+- `Koodex-1.5.0-x64-nsis.exe` - per-user installer, no administrator privileges required.
+- `Koodex-1.5.0-x64-portable.exe` - standalone launcher.
 - `win-unpacked/Koodex.exe` - unpacked app (keep its adjacent files).
 
 Quit an older running Koodex before starting the new version. Builds are unsigned unless electron-builder signing is configured. Uninstall preserves preferences and cached usage. Keep the portable launcher at a stable path if enabling startup. Normal Windows startup is silent after setup.
 
-The icon source is `assets/icons/koodex.svg`. `node scripts/icons.mjs` regenerates the PNG/ICO assets and tray icon variants from their matching geometry.
+The icon source is `assets/icons/koodex.svg`. `node scripts/icons.mjs` regenerates the PNG/ICO assets and tray icon variants from their matching geometry. `./scripts/installer-art.ps1` regenerates the small branded setup bitmaps; installer copy lives in `build/installer.nsh`. Branding does not replace code signing: unsigned builds may still show a Windows publisher warning.
 
 ## Checks
 
@@ -110,14 +109,15 @@ npm run smoke
 npm run test:scenarios
 npm run test:customization
 npm run test:placement
-npm run test:customization -- --exe=release/1.4.0/win-unpacked/Koodex.exe
-npm run test:resources -- --exe=release/1.4.0/win-unpacked/Koodex.exe --label=1.4.0
+npm run test:customization -- --exe=release/1.5.0/win-unpacked/Koodex.exe
+npm run test:resources -- --exe=release/1.5.0/win-unpacked/Koodex.exe --label=1.5.0
 npm run test:package
+./scripts/check-installer.ps1
 npm run test:live
 npm run test:packaged-live
 ```
 
-UI checks launch real Electron windows with isolated data under `.smoke-data/`. They cover welcome setup, preview isolation, click-only behavior, opt-in automatic switching, countdowns, immediate refresh, unified hover, independent settings dismissal, customization, and persistence after restart. Logic tests cover quota conversion, unknown windows, countdowns, RPC framing, alert deduplication, settings migration, and positioning.
+UI checks launch real Electron windows with isolated data under `.smoke-data/`. They cover welcome setup, live preview updates, click-only behavior, opt-in automatic switching, countdowns, immediate refresh, unified hover, click-away settings dismissal, customization, and persistence after restart. Logic tests cover quota conversion, unknown windows, countdowns, RPC framing, alert deduplication, settings migration, and positioning.
 
 Live checks perform read-only quota requests, submit no model turns, and verify process reuse and shutdown. The packaged check verifies live usage and startup API arguments; it intercepts startup registration to avoid adding the test copy to Windows startup. A Windows sign-out/sign-in cycle, Focus Assist behavior, and physical multi-monitor configurations still need manual acceptance testing on the target machine.
 
