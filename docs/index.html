@@ -4,54 +4,92 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b0b0b">
-  <meta name="description" content="Koodex is a quiet Windows tray companion for Codex usage, with a floating pill you can make your own.">
-  <meta property="og:title" content="Koodex — Your usage, your way">
-  <meta property="og:description" content="A quiet Windows tray companion with a floating usage pill you can make your own.">
+  <meta name="description" content="Koodex keeps Codex usage close with a floating Windows pill you can make your own.">
+  <meta property="og:title" content="Koodex — Usage at a glance">
+  <meta property="og:description" content="A simple Windows tray companion for Codex usage.">
   <meta property="og:type" content="website">
-  <title>Koodex — Your usage, your way</title>
+  <title>Koodex — Usage at a glance</title>
   <link rel="icon" href="site-assets/koodex.svg" type="image/svg+xml">
   <link rel="stylesheet" href="site.css">
 </head>
 <body>
   <header class="site-header wrap">
     <a class="brand" href="#top" aria-label="Koodex home"><img src="site-assets/koodex.svg" alt=""><span>Koodex</span></a>
-    <nav aria-label="Main navigation"><a href="#styles">Styles</a><a href="#features">Features</a><a href="#setup">Setup</a><a href="https://github.com/CimanesDev/Koodex">GitHub</a></nav>
+    <nav aria-label="Main navigation">
+      <a href="#styles">Styles</a>
+      <a href="#how-it-works">How it works</a>
+      <a href="https://github.com/CimanesDev/Koodex">GitHub</a>
+    </nav>
     <a class="header-download" href="https://github.com/CimanesDev/Koodex/releases/latest">Download <span aria-hidden="true">↗</span></a>
   </header>
 
   <main id="top">
-    <section class="hero wrap" aria-labelledby="hero-title">
-      <div class="hero-intro">
-        <p class="overline">KOODEX / WINDOWS 11 / OPEN SOURCE</p>
-        <h1 id="hero-title">One small glance.<br><span>Entirely yours.</span></h1>
-        <p class="hero-description">Keep your Codex usage in view with a floating pill that fits your desktop. Choose what it shows, how it looks, and where it lives.</p>
-        <div class="hero-actions"><a class="button primary" href="https://github.com/CimanesDev/Koodex/releases/latest">Download for Windows <span aria-hidden="true">↗</span></a><a class="button secondary" href="https://github.com/CimanesDev/Koodex">View source</a></div>
-        <p class="fine-print">Free · Windows 11 x64 · Installer and portable app</p>
+    <section class="intro wrap" aria-labelledby="page-title">
+      <p class="eyebrow">A SMALL COMPANION FOR WINDOWS 11</p>
+      <h1 id="page-title">Usage at a glance.</h1>
+      <p>Koodex keeps your Codex limits nearby in a floating pill or system tray icon. Pick a display that feels right on your desktop.</p>
+      <div class="actions">
+        <a class="button button-primary" href="https://github.com/CimanesDev/Koodex/releases/latest">Download for Windows <span aria-hidden="true">↗</span></a>
+        <a class="button button-link" href="https://github.com/CimanesDev/Koodex">View on GitHub <span aria-hidden="true">↗</span></a>
       </div>
-
-      <div class="style-gallery" id="styles" aria-labelledby="styles-title">
-        <div class="gallery-heading"><div><span class="overline">THE FLOATING PILL</span><h2 id="styles-title">A shape for every setup.</h2></div><p>Bars, rings, text, or just the essentials. These are display options in Koodex.</p></div>
-        <div class="gallery-grid">
-          <article class="style-card card-wide"><div class="card-meta"><span>01 / TWO BARS</span><span>WITH COUNTDOWN</span></div><div class="demo-area"><div class="demo-pill text-pill countdown-pill"><span class="grip" aria-hidden="true">⠿</span><div class="quota"><strong>5h · 68%</strong><span class="bar"><i style="width:68%"></i></span><small>Resets in 2h 18m</small></div><span class="separator"></span><div class="quota"><strong>Weekly · 42%</strong><span class="bar"><i style="width:42%"></i></span><small>Resets in 3d 14h</small></div><span class="refresh" aria-hidden="true">↻</span></div></div><p>Everything, at a glance.</p></article>
-          <article class="style-card"><div class="card-meta"><span>02 / TWO RINGS</span><span>TEXT + INDICATORS</span></div><div class="demo-area"><div class="demo-pill ring-text-pill"><div class="ring-item"><span class="ring ring-68" aria-hidden="true"></span><span>5h <b>68%</b></span></div><span class="separator"></span><div class="ring-item"><span class="ring ring-42" aria-hidden="true"></span><span>Weekly <b>42%</b></span></div></div></div><p>Two limits, two rings.</p></article>
-          <article class="style-card"><div class="card-meta"><span>03 / NO COUNTDOWN</span><span>TWO BARS</span></div><div class="demo-area"><div class="demo-pill text-pill plain-pill"><span class="grip" aria-hidden="true">⠿</span><div class="quota"><strong>5h · 68%</strong><span class="bar"><i style="width:68%"></i></span></div><span class="separator"></span><div class="quota"><strong>Weekly · 42%</strong><span class="bar"><i style="width:42%"></i></span></div></div></div><p>Only what you need.</p></article>
-          <article class="style-card"><div class="card-meta"><span>04 / NESTED RINGS</span><span>COMBINED</span></div><div class="demo-area"><div class="demo-pill compact-pill"><span class="nested-ring" role="img" aria-label="Outer ring: 68 percent, inner ring: 42 percent"><i></i></span></div></div><p>Both limits in one mark.</p></article>
-          <article class="style-card"><div class="card-meta"><span>05 / STACKED BARS</span><span>COMBINED</span></div><div class="demo-area"><div class="demo-pill compact-pill"><span class="stacked-bars" role="img" aria-label="Top bar: 68 percent, bottom bar: 42 percent"><i></i><i></i></span></div></div><p>A quiet, compact read.</p></article>
-          <article class="style-card"><div class="card-meta"><span>06 / INDICATOR ONLY</span><span>TWO RINGS</span></div><div class="demo-area"><div class="demo-pill compact-pill dual-rings"><span class="ring ring-68" aria-hidden="true"></span><span class="ring ring-42" aria-hidden="true"></span></div></div><p>Just the signal.</p></article>
-          <article class="style-card"><div class="card-meta"><span>07 / ONE LIMIT</span><span>SINGLE RING</span></div><div class="demo-area"><div class="demo-pill ring-text-pill"><span class="ring ring-68" aria-hidden="true"></span><span class="single-limit">5h <b>68%</b></span></div></div><p>Focus on one quota.</p></article>
-          <article class="style-card"><div class="card-meta"><span>08 / SIDE PIN</span><span>INDICATOR ONLY</span></div><div class="demo-area"><div class="demo-pill side-pin"><span class="stacked-bars" role="img" aria-label="Side pin showing two usage bars"><i></i><i></i></span></div></div><p>Tucked against the edge.</p></article>
-        </div>
-        <p class="gallery-note">Examples use sample values. You can also show a single limit, change placement, or pin the pill to an edge.</p>
-      </div>
+      <p class="microcopy">Free and open source · Windows 11 x64 · Installer or portable</p>
     </section>
 
-    <section class="feature-section" id="features" aria-labelledby="feature-title"><div class="wrap"><div class="section-header"><span class="overline">BEYOND THE PILL</span><h2 id="feature-title">Quiet when you need it.<br>There when you look.</h2></div><div class="feature-list"><article><span>01</span><h3>Desktop or tray</h3><p>Keep the pill in view, pin it to an edge, or use the system tray icon.</p></article><article><span>02</span><h3>Useful timing</h3><p>See remaining percentages and optional reset countdowns. Refresh when you want.</p></article><article><span>03</span><h3>Your preferences</h3><p>Choose indicator styles, placement, alerts, and refresh frequency.</p></article></div></div></section>
+    <section class="styles wrap" id="styles" aria-labelledby="styles-title">
+      <div class="section-heading"><div><p class="eyebrow">MAKE IT YOURS</p><h2 id="styles-title">Choose your view.</h2></div><p>Eight ways to show the same sample limits. Countdown, text, and indicators can be adjusted in Koodex.</p></div>
+      <div class="style-grid">
+        <article class="style-card">
+          <div class="card-top"><h3>Two bars</h3><span>01</span></div>
+          <div class="preview"><div class="pill text-pill"><div class="quota"><strong>5h · 68%</strong><span class="bar"><i style="width:68%"></i></span><small>Resets in 2h 18m</small></div><span class="divider"></span><div class="quota"><strong>Weekly · 42%</strong><span class="bar"><i style="width:42%"></i></span><small>Resets in 3d 14h</small></div></div></div>
+          <p>With reset countdowns</p>
+        </article>
+        <article class="style-card">
+          <div class="card-top"><h3>Two rings</h3><span>02</span></div>
+          <div class="preview"><div class="pill rings-with-text"><div><span class="ring ring-68" aria-hidden="true"></span><strong>5h · 68%</strong></div><span class="divider"></span><div><span class="ring ring-42" aria-hidden="true"></span><strong>Weekly · 42%</strong></div></div></div>
+          <p>Separate indicators</p>
+        </article>
+        <article class="style-card">
+          <div class="card-top"><h3>Just the bars</h3><span>03</span></div>
+          <div class="preview"><div class="pill text-pill short-pill"><div class="quota"><strong>5h · 68%</strong><span class="bar"><i style="width:68%"></i></span></div><span class="divider"></span><div class="quota"><strong>Weekly · 42%</strong><span class="bar"><i style="width:42%"></i></span></div></div></div>
+          <p>No reset countdowns</p>
+        </article>
+        <article class="style-card">
+          <div class="card-top"><h3>Nested rings</h3><span>04</span></div>
+          <div class="preview"><div class="pill compact-pill"><span class="nested-ring" role="img" aria-label="Outer ring 68 percent, inner ring 42 percent"><i></i></span></div></div>
+          <p>Both limits in one indicator</p>
+        </article>
+        <article class="style-card">
+          <div class="card-top"><h3>Stacked bars</h3><span>05</span></div>
+          <div class="preview"><div class="pill compact-pill"><span class="stacked-bars" role="img" aria-label="Top bar 68 percent, bottom bar 42 percent"><i></i><i></i></span></div></div>
+          <p>Both limits in one indicator</p>
+        </article>
+        <article class="style-card">
+          <div class="card-top"><h3>Rings only</h3><span>06</span></div>
+          <div class="preview"><div class="pill compact-pill two-rings"><span class="ring ring-68" aria-hidden="true"></span><span class="ring ring-42" aria-hidden="true"></span></div></div>
+          <p>Indicators without text</p>
+        </article>
+        <article class="style-card">
+          <div class="card-top"><h3>One limit</h3><span>07</span></div>
+          <div class="preview"><div class="pill single-ring"><span class="ring ring-68" aria-hidden="true"></span><strong>5h · 68%</strong></div></div>
+          <p>Focus on one quota</p>
+        </article>
+        <article class="style-card">
+          <div class="card-top"><h3>Side pin</h3><span>08</span></div>
+          <div class="preview"><div class="pill side-pin"><span class="vertical-bars" role="img" aria-label="Two vertical usage bars"><i></i><i></i></span></div></div>
+          <p>Tucked against the edge</p>
+        </article>
+      </div>
+      <p class="sample-note">Previews show sample values. Colors and placement are configurable in the app.</p>
+    </section>
 
-    <section class="setup-section wrap" id="setup" aria-labelledby="setup-title"><div><span class="overline">GET STARTED</span><h2 id="setup-title">Ready in a few clicks.</h2><p>Download Koodex for Windows 11, sign in to the Codex CLI, and choose your look. Optional Claude Code reports use a local bridge.</p><a class="button primary" href="https://github.com/CimanesDev/Koodex/releases/latest">Get Koodex <span aria-hidden="true">↗</span></a></div><ol><li><span>01</span><div><strong>Download</strong><p>Choose the installer or portable app from the latest release.</p></div></li><li><span>02</span><div><strong>Connect</strong><p>Sign in to your Codex CLI separately.</p></div></li><li><span>03</span><div><strong>Make it yours</strong><p>Set the display style and placement that work for you.</p></div></li></ol></section>
+    <section class="details wrap" id="how-it-works" aria-labelledby="details-title">
+      <div><p class="eyebrow">THE BASICS</p><h2 id="details-title">Set it up once.<br>Keep working.</h2></div>
+      <div class="detail-copy"><p>Install Koodex, sign in to the Codex CLI, and choose the pill style and placement you like. Your preferences stay on your computer. Claude Code reports are available through an optional local bridge.</p><a href="https://github.com/CimanesDev/Koodex#requirements">Read setup and requirements <span aria-hidden="true">↗</span></a></div>
+    </section>
 
-    <section class="trust wrap" aria-label="Project information"><p><strong>Open source</strong><br>MIT licensed. <a href="https://github.com/CimanesDev/Koodex">Inspect the code ↗</a></p><p><strong>Local by default</strong><br>No Koodex backend, telemetry, or ads.</p><p><strong>Windows warning</strong><br>Current builds are unsigned, so Windows may show “Unknown publisher.”</p></section>
+    <section class="download-section wrap"><div><h2>Make room for the work.</h2><p>Let Koodex keep an eye on your limits.</p></div><a class="button button-primary" href="https://github.com/CimanesDev/Koodex/releases/latest">Download Koodex <span aria-hidden="true">↗</span></a></section>
   </main>
 
-  <footer class="site-footer wrap"><a class="brand" href="#top"><img src="site-assets/koodex.svg" alt=""><span>Koodex</span></a><span>Made by cimanesdev. Not affiliated with OpenAI or Anthropic.</span><div><a href="https://github.com/CimanesDev/Koodex/releases/latest">Download</a><a href="https://github.com/CimanesDev/Koodex">GitHub</a><a href="https://github.com/CimanesDev/Koodex/blob/main/LICENSE">License</a></div></footer>
+  <footer class="site-footer wrap"><div><a class="brand" href="#top"><img src="site-assets/koodex.svg" alt=""><span>Koodex</span></a><p>Open source · MIT licensed · No Koodex backend or telemetry</p><p class="publisher-note">Current Windows builds are unsigned and may show “Unknown publisher.”</p></div><div class="footer-links"><a href="https://github.com/CimanesDev/Koodex/releases/latest">Downloads</a><a href="https://github.com/CimanesDev/Koodex">Source</a><a href="https://github.com/CimanesDev/Koodex/blob/main/LICENSE">License</a></div></footer>
 </body>
 </html>
