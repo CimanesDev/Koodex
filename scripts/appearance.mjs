@@ -22,7 +22,16 @@ const env = {
   KOODEX_TEST_DATA: directory,
 };
 delete env.ELECTRON_RUN_AS_NODE;
-const launch = () => electron.launch({ args: ["."], env });
+const executable = process.argv
+  .find((arg) => arg.startsWith("--exe="))
+  ?.slice(6);
+const launch = () =>
+  electron.launch({
+    ...(executable
+      ? { executablePath: resolve(executable), args: [] }
+      : { args: ["."] }),
+    env,
+  });
 const app = await launch();
 try {
   const pill = await getPage(app, "pill");

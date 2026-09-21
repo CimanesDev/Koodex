@@ -1,4 +1,4 @@
-﻿import { _electron as electron, expect } from "@playwright/test";
+import { _electron as electron, expect } from "@playwright/test";
 import assert from "node:assert/strict";
 import { resolve } from "node:path";
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -20,7 +20,7 @@ const env = {
 delete env.ELECTRON_RUN_AS_NODE;
 delete env.KOODEX_MOCK;
 const app = await electron.launch({
-  executablePath: resolve("release/1.5.0/win-unpacked/Koodex.exe"),
+  executablePath: resolve("release/1.6.0/win-unpacked/Koodex.exe"),
   args: [],
   env,
 });

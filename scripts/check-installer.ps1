@@ -1,4 +1,4 @@
-param([string]$Version = '1.5.0')
+param([string]$Version = '1.6.0')
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Drawing
 Add-Type @'

@@ -100,10 +100,10 @@ npm run build
 npm run dist
 ```
 
-Version 1.5 outputs in `release/1.5.0/`:
+Version 1.6 outputs in `release/1.6.0/`:
 
-- `Koodex-1.5.0-x64-nsis.exe` - per-user installer, no administrator privileges required.
-- `Koodex-1.5.0-x64-portable.exe` - standalone launcher.
+- `Koodex-1.6.0-x64-nsis.exe` - per-user installer, no administrator privileges required.
+- `Koodex-1.6.0-x64-portable.exe` - standalone launcher.
 - `win-unpacked/Koodex.exe` - unpacked app (keep its adjacent files).
 
 Quit an older running Koodex before starting the new version. Builds are unsigned unless electron-builder signing is configured. Uninstall preserves preferences and cached usage. Keep the portable launcher at a stable path if enabling startup. Normal Windows startup is silent after setup.
@@ -124,8 +124,8 @@ npm run test:customization
 npm run test:placement
 npm run test:appearance
 npm run test:interactions
-npm run test:customization -- --exe=release/1.5.0/win-unpacked/Koodex.exe
-npm run test:resources -- --exe=release/1.5.0/win-unpacked/Koodex.exe --label=1.5.0
+npm run test:customization -- --exe=release/1.6.0/win-unpacked/Koodex.exe
+npm run test:resources -- --exe=release/1.6.0/win-unpacked/Koodex.exe --label=1.6.0
 npm run test:package
 ./scripts/check-installer.ps1
 npm run test:live
