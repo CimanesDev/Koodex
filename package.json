@@ -8,6 +8,7 @@
   "license": "MIT",
   "main": "dist/main/main.js",
   "scripts": {
+    "build:site": "node scripts/build-site.mjs",
     "test:resources": "node scripts/profile.mjs --expect-lazy",
     "test:package": "node scripts/check-package.mjs",
     "test:placement": "node scripts/placement.mjs",

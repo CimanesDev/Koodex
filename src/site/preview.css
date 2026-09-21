@@ -1,0 +1,156 @@
+body {
+  background: #141414;
+  user-select: auto;
+}
+.demo {
+  padding: 24px;
+}
+.demo header {
+  margin-bottom: 20px;
+}
+.demo header p {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: #999;
+}
+.demo h1 {
+  font-size: 27px;
+  letter-spacing: -1px;
+  margin-top: 7px;
+}
+.demo header button {
+  color: #aaa;
+  padding: 8px;
+  border-radius: 5px;
+}
+.stage {
+  height: 208px;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: radial-gradient(ellipse at center, #24262a, #191a1c);
+  border: 1px solid #333;
+  border-radius: 10px;
+  padding: 34px 12px;
+}
+.caption {
+  position: absolute;
+  top: 13px;
+  left: 14px;
+  right: 14px;
+  display: flex;
+  justify-content: space-between;
+  color: #aaa;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+}
+.caption span {
+  color: #858585;
+  letter-spacing: 0;
+}
+.stage > p {
+  position: absolute;
+  bottom: 12px;
+  left: 5px;
+  right: 5px;
+  text-align: center;
+  font-size: 10px;
+  color: #999;
+}
+.position-left {
+  justify-content: flex-start;
+}
+.position-right {
+  justify-content: flex-end;
+}
+.position-top-left {
+  justify-content: flex-start;
+  align-items: flex-start;
+}
+.position-top-center {
+  align-items: flex-start;
+}
+.position-top-right {
+  justify-content: flex-end;
+  align-items: flex-start;
+}
+.pill-preview .drag-handle {
+  cursor: default;
+}
+.controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px 12px;
+  margin-top: 20px;
+}
+.controls label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+  font-size: 11px;
+  color: #aaa;
+}
+.controls select {
+  width: 100%;
+  padding: 9px 7px;
+  border: 1px solid #3b3b3b;
+  border-radius: 6px;
+  background: #202020;
+  color: #eee;
+  font-size: 11px;
+}
+fieldset {
+  display: flex;
+  gap: 10px;
+  border: 0;
+  padding: 0;
+  margin: 17px 0;
+}
+legend {
+  font-size: 11px;
+  color: #aaa;
+  margin-bottom: 10px;
+  padding: 0;
+}
+fieldset button {
+  width: 23px;
+  height: 23px;
+  border: 4px solid #141414;
+  border-radius: 50%;
+  background: var(--swatch);
+  outline: 1px solid transparent;
+}
+fieldset button[aria-pressed="true"] {
+  outline-color: var(--swatch);
+}
+.toggles {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  font-size: 11px;
+  color: #bbb;
+}
+.toggles label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.toggles input {
+  accent-color: #eee;
+  margin: 0;
+}
+.note {
+  font-size: 10px;
+  color: #888;
+  margin-top: 18px;
+}
+@media (max-width: 360px) {
+  .demo {
+    padding: 16px;
+  }
+  .demo h1 {
+    font-size: 24px;
+  }
+}
