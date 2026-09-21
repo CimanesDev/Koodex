@@ -2,6 +2,10 @@
 
 A quiet Windows tray companion for Codex and optional Claude Code quota reports.
 
+**[Download Koodex for Windows](https://github.com/CimanesDev/Koodex/releases/latest)**
+
+Choose the `nsis.exe` installer (recommended) or the `portable.exe` standalone launcher under **Assets**. Requires Windows 11 x64 and a configured provider listed below. Release builds are unsigned and may display a Windows publisher warning.
+
 ## Features
 
 - Codex usage events and configurable polling down to 10 seconds; remaining percentages and reset countdowns.
