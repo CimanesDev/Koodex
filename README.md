@@ -35,9 +35,9 @@ Click the tray icon for usage details. Right-click the floating pill for **Setti
 In settings:
 
 - **Pill & appearance:** choose one or both limits, text or indicator-only, visual style cards (two bars, stacked bars, two rings, nested rings), accent, countdowns, quick refresh, switching behavior, and a usage meter/ring for the tray.
-- **Placement:** pin top left/center/right or vertically on either side. Keep the grip visible to move along the pinned edge, or hide it to lock the position. Returning to free placement restores the previous free position. Changing the pin preset resets its edge offset.
+- **Placement:** drag anywhere on the pill, with or without its optional grip. A click still switches limits; moving at least five pixels starts a drag. Free placement snaps near the left/right edges and top center. Pins move along their edge. Returning to free placement restores the previous free position. Changing the pin preset resets its edge offset. Enable **Collapsible side tab** with left/right placement to reveal or hide the pill with an animated edge tab; it starts collapsed.
 - **Providers:** choose Codex or prepare the optional Claude Code bridge. One provider is displayed at a time.
-- **General:** configure startup, low-usage alerts, and background refresh frequency.
+- **General:** configure startup, low-usage alerts, and background refresh frequency. Alerts fire once at 25%, 10%, and 0% remaining for each quota; a skipped threshold produces only the most urgent alert. Changing reset estimates does not repeat exhaustion alerts. Alerts rearm after the previous reset has passed and a fresh report confirms recovery.
 
 One-limit mode is **click-only by default**. Automatic cycling starts only if you choose an interval. Upgrading from 1.0/1.1 turns off the old implicit auto-switch once; subsequent explicit choices are preserved. Existing users keep their other preferences and skip the welcome screen.
 
@@ -101,6 +101,8 @@ The icon source is `assets/icons/koodex.svg`. `node scripts/icons.mjs` regenerat
 
 ## Checks
 
+For a signed release, follow [the signing setup](docs/code-signing.md) and run `npm run dist:signed`. A trusted certificate or validated cloud signing identity is required.
+
 ```powershell
 npm run typecheck
 npm test
@@ -109,6 +111,7 @@ npm run smoke
 npm run test:scenarios
 npm run test:customization
 npm run test:placement
+npm run test:interactions
 npm run test:customization -- --exe=release/1.5.0/win-unpacked/Koodex.exe
 npm run test:resources -- --exe=release/1.5.0/win-unpacked/Koodex.exe --label=1.5.0
 npm run test:package
@@ -136,6 +139,8 @@ Koodex reads usage through your local Codex installation or the optional Claude 
 Preferences, cached usage, and alert deduplication state are JSON files in Electron's user-data directory (`%APPDATA%/Koodex`). Mock mode uses `%APPDATA%/Koodex-mock`. Delete the directory while the app is closed to reset preferences and repeat setup.
 
 ## Troubleshooting
+
+**Several Koodex entries in Task Manager:** Electron uses separate processes for the main application, renderer windows, GPU work, and utility services. Four entries can be one application, not four independent instances. Koodex already holds a single-instance lock. A visible pill needs one renderer; settings and usage windows are released after closing. Codex also runs a separate CLI child. Use `npm run test:resources` to inspect process/resource use in an isolated run.
 
 - **Codex not found:** install Codex or add its native executable directory to PATH.
 - **Sign in to Codex first:** run `codex login`, then refresh.

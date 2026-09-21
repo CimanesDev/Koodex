@@ -6,6 +6,8 @@ function subscribe<T>(channel: string, cb: (data: T) => void) {
   return () => ipcRenderer.removeListener(channel, listener);
 }
 const bridge: Bridge = {
+  dragPill: (phase) => ipcRenderer.invoke("pill:drag", phase),
+  expandPill: (expanded) => ipcRenderer.invoke("pill:expand", expanded),
   prepareClaudeBridge: () => ipcRenderer.invoke("claude:prepare"),
   getUsage: () => ipcRenderer.invoke("usage:get"),
   refreshUsage: () => ipcRenderer.invoke("usage:refresh"),

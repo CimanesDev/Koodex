@@ -234,7 +234,7 @@ footer {
   padding-left: 8px;
   color: var(--text-muted);
   font-size: 12px;
-  -webkit-app-region: drag;
+  -webkit-app-region: no-drag;
   cursor: grab;
 }
 .pill-content {

@@ -216,6 +216,20 @@ if (!app.requestSingleInstanceLock()) {
         return fn(arg);
       });
     handle("usage:get", () => state);
+    ipcMain.handle("pill:drag", (event, phase) => {
+      if (
+        event.sender === windows?.pill?.webContents &&
+        event.senderFrame === event.sender.mainFrame
+      )
+        windows.dragPill(phase);
+    });
+    ipcMain.handle("pill:expand", (event, expanded) => {
+      if (
+        event.sender === windows?.pill?.webContents &&
+        event.senderFrame === event.sender.mainFrame
+      )
+        windows.expandPill(expanded);
+    });
     handle("claude:prepare", () =>
       prepareClaudeBridge(app.getAppPath(), app.getPath("userData")),
     );

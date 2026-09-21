@@ -31,6 +31,7 @@ export interface Settings {
   pillIndicator: "ring" | "bar";
   pillContent: "details" | "indicator";
   pillShowDragHandle: boolean;
+  pillSideHideable: boolean;
   pillPinOffset: number | null;
   pillPlacement:
     "free" | "top-left" | "top-center" | "top-right" | "left" | "right";
@@ -54,6 +55,7 @@ export const defaults: Settings = {
   pillIndicator: "ring",
   pillContent: "details",
   pillShowDragHandle: true,
+  pillSideHideable: false,
   pillPinOffset: null,
   pillPlacement: "free",
   pillSwitchSeconds: 0,
@@ -65,6 +67,8 @@ export const defaults: Settings = {
   settingsVersion: 2,
 };
 export interface Bridge {
+  dragPill(phase: "start" | "move" | "end" | "cancel"): Promise<void>;
+  expandPill(expanded: boolean): Promise<void>;
   prepareClaudeBridge(): Promise<string>;
   getUsage(): Promise<Snapshot>;
   refreshUsage(): Promise<void>;

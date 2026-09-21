@@ -72,6 +72,7 @@ export function SettingsView({
       | "pillShowRefresh"
       | "launchAtStartup"
       | "notificationsEnabled"
+      | "pillSideHideable"
       | "pillShowDragHandle",
     label: string,
     description: string,
@@ -462,13 +463,17 @@ export function SettingsView({
               {toggle(
                 "pillShowDragHandle",
                 "Show drag grip",
-                settings.pillPlacement === "free"
-                  ? "Hide it to lock your current free position."
-                  : "Drag along the screen edge without unpinning.",
+                "Optional visual handle. You can always drag the pill itself.",
+              )}
+              {toggle(
+                "pillSideHideable",
+                "Collapsible side tab",
+                "On left or right placement, click the edge tab to slide usage out or hide it.",
+                !["left", "right"].includes(settings.pillPlacement),
               )}
               <p className="preference-note">
-                Pins keep their screen edge while you drag. Hide the grip to
-                lock the position. Your previous free position is remembered.
+                Drag the pill to move it; click to switch limits. Free placement
+                snaps near the sides and top center. Pins stay on their edge.
               </p>
             </section>
           </div>
@@ -576,7 +581,7 @@ export function SettingsView({
               {toggle(
                 "notificationsEnabled",
                 "Low usage alerts",
-                "Notify at 25%, 10%, and 5% remaining.",
+                "Notify once at 25%, 10%, and 0% per limit cycle.",
               )}
             </section>
             <section>

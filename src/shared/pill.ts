@@ -69,7 +69,7 @@ export function pillSize(settings: Settings) {
     };
   return {
     width:
-      (both ? 284 : 204) +
+      (both ? 284 : 176) +
       (settings.pillShowRefresh ? 32 : 0) -
       (hasGrip(settings) ? 0 : 12),
     height:

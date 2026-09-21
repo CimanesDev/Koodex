@@ -12,7 +12,7 @@ import {
 } from "../src/shared/pill";
 import { trayLevels, orderedQuotas } from "../src/shared/quotas";
 import { collectAlerts } from "../src/main/notifications";
-import { nearAnchor, clampBounds } from "../src/main/positioning";
+import { nearAnchor, clampBounds, snapBounds } from "../src/main/positioning";
 const raw = (used = 32) => ({
   rateLimits: {
     primary: {
@@ -134,7 +134,7 @@ test("pill size matches optional countdown and refresh affordances", () => {
     { width: 316, height: 68 },
   );
   assert.deepEqual(pillSize({ ...defaults, pillShowReset: true }), {
-    width: 204,
+    width: 176,
     height: 62,
   });
 });
@@ -240,11 +240,61 @@ test("alerts deduplicate thresholds within a reset cycle", () => {
   assert.equal(collectAlerts(adaptUsage(raw(80)), ledger).length, 1);
   assert.equal(collectAlerts(adaptUsage(raw(81)), ledger).length, 0);
   assert.equal(collectAlerts(adaptUsage(raw(91)), ledger).length, 1);
-  assert.equal(collectAlerts(adaptUsage(raw(96)), ledger).length, 1);
+  assert.equal(collectAlerts(adaptUsage(raw(96)), ledger).length, 0);
   assert.equal(collectAlerts(adaptUsage(raw(97)), ledger).length, 0);
   const r = raw(97);
   r.rateLimits.primary.resetsAt++;
-  assert.equal(collectAlerts(adaptUsage(r), ledger).length, 1);
+  assert.equal(collectAlerts(adaptUsage(r), ledger).length, 0);
+  assert.equal(collectAlerts(adaptUsage(raw(100)), ledger).length, 1);
+  assert.equal(collectAlerts(adaptUsage(raw(100)), ledger).length, 0);
+});
+test("exhaustion survives reset drift, restart and overdue reports; recovery rearms", () => {
+  let ledger = {};
+  const report = (used: number, reset: number) => {
+    const r = raw(used);
+    r.rateLimits.primary.resetsAt = reset;
+    return adaptUsage(r);
+  };
+  assert.equal(
+    collectAlerts(report(100, 2000000000), ledger, 1999990000000).length,
+    1,
+  );
+  ledger = JSON.parse(JSON.stringify(ledger));
+  assert.equal(
+    collectAlerts(report(100, 2000001000), ledger, 2000000001000).length,
+    0,
+  );
+  assert.equal(
+    collectAlerts(report(10, 2000020000), ledger, 2000000002000).length,
+    0,
+  );
+  assert.equal(
+    collectAlerts(report(75, 2000020000), ledger, 2000000003000).length,
+    1,
+  );
+  assert.equal(
+    collectAlerts(report(90, 2000020000), ledger, 2000000004000).length,
+    1,
+  );
+  assert.equal(
+    collectAlerts(report(100, 2000020000), ledger, 2000000005000).length,
+    1,
+  );
+});
+test("free pill snaps to sides and top center on negative-coordinate displays", () => {
+  const area = { x: -1920, y: 40, width: 1920, height: 1040 };
+  const rect = { x: -1910, y: 400, width: 176, height: 44 };
+  assert.equal(snapBounds(rect, area).x, -1908);
+  assert.equal(snapBounds({ ...rect, x: -180 }, area).x, -188);
+  assert.deepEqual(snapBounds({ ...rect, x: -1060, y: 60 }, area), {
+    ...rect,
+    x: -1048,
+    y: 52,
+  });
+  assert.deepEqual(snapBounds({ ...rect, x: -800 }, area), {
+    ...rect,
+    x: -800,
+  });
 });
 test("positions above bottom taskbar and clamps negative-coordinate monitors", () => {
   const area = { x: -1920, y: 0, width: 1920, height: 1040 };

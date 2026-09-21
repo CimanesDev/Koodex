@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState, type PointerEvent } from "react";
 import type { Settings, Snapshot, UsageWindow } from "../../shared/types";
 import { useAlternatingMetric } from "../hooks/useAlternatingMetric";
 import { UsageRing } from "./UsageRing";
@@ -26,6 +27,51 @@ export function CompactPill({
   const providerName = settings.provider === "claude" ? "Claude Code" : "Codex";
   const minimal = settings.pillContent === "indicator";
   const vertical = isVertical(settings);
+  const docked = !preview && vertical && settings.pillSideHideable;
+  const [expanded, setExpanded] = useState(false);
+  useEffect(() => {
+    setExpanded(false);
+  }, [docked, settings.pillPlacement]);
+  const gesture = useRef<{ x: number; y: number; moved: boolean } | null>(null);
+  const suppressClick = useRef(false);
+  function pointerDown(event: PointerEvent<HTMLDivElement>) {
+    if (
+      preview ||
+      event.button !== 0 ||
+      (event.target as HTMLElement).closest(".pill-refresh, .dock-tab")
+    )
+      return;
+    gesture.current = { x: event.screenX, y: event.screenY, moved: false };
+    suppressClick.current = false;
+    (event.target as Element).setPointerCapture(event.pointerId);
+    void window.Koodex.dragPill("start");
+  }
+  function pointerMove(event: PointerEvent<HTMLDivElement>) {
+    const start = gesture.current;
+    if (!start) return;
+    if (
+      !start.moved &&
+      Math.hypot(event.screenX - start.x, event.screenY - start.y) >= 5
+    ) {
+      start.moved = true;
+      event.currentTarget.setPointerCapture(event.pointerId);
+    }
+    if (start.moved) {
+      suppressClick.current = true;
+      void window.Koodex.dragPill("move");
+    }
+  }
+  function pointerEnd(event: PointerEvent<HTMLDivElement>) {
+    if (!gesture.current) return;
+    void window.Koodex.dragPill(
+      event.type === "pointercancel" || !gesture.current.moved
+        ? "cancel"
+        : "end",
+    );
+    gesture.current = null;
+    if (event.currentTarget.hasPointerCapture(event.pointerId))
+      event.currentTarget.releasePointerCapture(event.pointerId);
+  }
   const combined = both && settings.pillBothStyle === "combined";
   const { quota, next } = useAlternatingMetric(
     state.usage?.windows ?? [],
@@ -129,8 +175,19 @@ export function CompactPill({
       )}
     </>
   );
-  return (
+  const pill = (
     <div
+      onPointerDown={pointerDown}
+      onPointerMove={pointerMove}
+      onPointerUp={pointerEnd}
+      onPointerCancel={pointerEnd}
+      onClickCapture={(event) => {
+        if (suppressClick.current) {
+          event.preventDefault();
+          event.stopPropagation();
+          suppressClick.current = false;
+        }
+      }}
       style={{ height: pillSize(settings).height }}
       className={`pill ${both ? "pill-both" : ""} pill-${settings.pillIndicator} ${settings.pillShowReset && !minimal ? "pill-with-reset" : ""} ${preview ? "pill-preview" : ""} ${minimal ? "pill-minimal" : ""} ${vertical ? "pill-vertical" : ""} ${hasGrip(settings) ? "" : "pill-no-grip"} ${combined ? "pill-combined" : ""}`}
     >
@@ -174,6 +231,35 @@ export function CompactPill({
           <RefreshIcon />
         </button>
       )}
+    </div>
+  );
+  if (!docked) return pill;
+  const tab = (
+    <button
+      className="dock-tab"
+      aria-label={expanded ? "Hide usage pill" : "Show usage pill"}
+      aria-expanded={expanded}
+      onClick={() => {
+        setExpanded(!expanded);
+        void window.Koodex.expandPill(!expanded);
+      }}
+    >
+      {(settings.pillPlacement === "left") !== expanded ? "›" : "‹"}
+    </button>
+  );
+  return (
+    <div
+      className={`pill-dock dock-${settings.pillPlacement}`}
+      style={{
+        width: pillSize(settings).width + 36,
+        height: pillSize(settings).height,
+      }}
+    >
+      {settings.pillPlacement === "right" && tab}
+      <div className="dock-content" inert={!expanded}>
+        {pill}
+      </div>
+      {settings.pillPlacement === "left" && tab}
     </div>
   );
 }

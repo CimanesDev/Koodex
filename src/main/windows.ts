@@ -1,7 +1,7 @@
 import { app, BrowserWindow, screen, Menu, type WebContents } from "electron";
 import { join } from "node:path";
 import type { Settings } from "../shared/types";
-import { clampBounds, nearAnchor, type Rect } from "./positioning";
+import { clampBounds, nearAnchor, snapBounds, type Rect } from "./positioning";
 import { pillSize, pinnedPosition, pinOffsetForDrag } from "../shared/pill";
 
 export class Windows {
@@ -13,6 +13,10 @@ export class Windows {
   private ready = new WeakSet<BrowserWindow>();
   private pendingShow = new Map<BrowserWindow, boolean>();
   private releaseTimers = new Map<BrowserWindow, NodeJS.Timeout>();
+  private drag?: { cursor: { x: number; y: number }; bounds: Rect };
+  private expanded = false;
+  private slideTimer?: NodeJS.Timeout;
+  private dockMode = "";
   constructor(
     private getSettings: () => Settings,
     private savePosition: (
@@ -73,7 +77,12 @@ export class Windows {
       this.pendingShow.delete(w);
       if (this.popover === w) this.popover = undefined;
       if (this.preferences === w) this.preferences = undefined;
-      if (this.pill === w) this.pill = undefined;
+      if (this.pill === w) {
+        this.pill = undefined;
+        this.expanded = false;
+        this.drag = undefined;
+        clearInterval(this.slideTimer);
+      }
     });
     if (!app.isPackaged && process.env.KOODEX_DEV_URL)
       void w.loadURL(`${process.env.KOODEX_DEV_URL}/?view=${view}`);
@@ -192,6 +201,14 @@ export class Windows {
   }
   syncPill() {
     const settings = this.getSettings();
+    const mode =
+      settings.pillSideHideable &&
+      ["left", "right"].includes(settings.pillPlacement)
+        ? settings.pillPlacement
+        : "";
+    if (mode !== this.dockMode) this.expanded = false;
+    this.dockMode = mode;
+    clearInterval(this.slideTimer);
     if (!settings.floatingPillEnabled || !settings.setupCompleted) {
       this.hide(this.pill);
       return;
@@ -204,10 +221,6 @@ export class Windows {
         this.hidePill();
       });
       w.on("will-move", (event, bounds) => {
-        if (!this.getSettings().pillShowDragHandle) {
-          event.preventDefault();
-          return;
-        }
         const current = this.getSettings();
         if (current.pillPlacement !== "free") {
           event.preventDefault();
@@ -233,15 +246,116 @@ export class Windows {
       : screen.getPrimaryDisplay().workArea;
     const p = pinnedPosition(settings, area);
     this.pill.setBounds(clampBounds({ ...p, width, height }, area));
+    if (this.dockMode) this.pill.setBounds(this.dockBounds(this.expanded));
     this.pill.webContents.setBackgroundThrottling(
       settings.pillSwitchSeconds === 0 || settings.pillLayout === "both",
     );
     this.show(this.pill, false);
   }
+  private dockBounds(expanded: boolean): Rect {
+    const settings = this.getSettings();
+    const area = screen.getDisplayMatching(this.pill!.getBounds()).workArea;
+    const size = pillSize(settings);
+    const width = expanded ? size.width + 36 : 36;
+    return clampBounds(
+      {
+        x:
+          settings.pillPlacement === "left"
+            ? area.x
+            : area.x + area.width - width,
+        y: pinnedPosition(settings, area).y,
+        width,
+        height: size.height,
+      },
+      area,
+    );
+  }
+  expandPill(expanded: boolean) {
+    if (!this.pill || !this.dockMode || typeof expanded !== "boolean") return;
+    this.expanded = expanded;
+    clearInterval(this.slideTimer);
+    const w = this.pill,
+      from = w.getBounds(),
+      to = this.dockBounds(expanded);
+    const start = Date.now();
+    this.slideTimer = setInterval(() => {
+      if (w.isDestroyed()) {
+        clearInterval(this.slideTimer);
+        return;
+      }
+      const progress = Math.min(1, (Date.now() - start) / 180);
+      const eased = 1 - (1 - progress) ** 3;
+      w.setBounds({
+        ...to,
+        x: Math.round(from.x + (to.x - from.x) * eased),
+        width: Math.round(from.width + (to.width - from.width) * eased),
+      });
+      if (progress === 1) clearInterval(this.slideTimer);
+    }, 16);
+  }
+  dragPill(phase: unknown) {
+    const w = this.pill;
+    if (!w || !w.isVisible()) return;
+    if (phase === "start") {
+      clearInterval(this.slideTimer);
+      this.drag = {
+        cursor: screen.getCursorScreenPoint(),
+        bounds: w.getBounds(),
+      };
+      return;
+    }
+    if (!this.drag) return;
+    if (phase === "cancel") {
+      w.setBounds(this.drag.bounds);
+      this.drag = undefined;
+      return;
+    }
+    if (phase !== "move" && phase !== "end") return;
+    const cursor = screen.getCursorScreenPoint(),
+      settings = this.getSettings();
+    const bounds = {
+      ...this.drag.bounds,
+      x: this.drag.bounds.x + cursor.x - this.drag.cursor.x,
+      y: this.drag.bounds.y + cursor.y - this.drag.cursor.y,
+    };
+    const area =
+      settings.pillPlacement === "free"
+        ? screen.getDisplayNearestPoint(cursor).workArea
+        : screen.getDisplayMatching(this.drag.bounds).workArea;
+    if (settings.pillPlacement === "free") {
+      const next =
+        phase === "end" ? snapBounds(bounds, area) : clampBounds(bounds, area);
+      w.setBounds(next);
+      if (phase === "end") this.savePosition({ x: next.x, y: next.y });
+    } else {
+      const offset = pinOffsetForDrag(settings, bounds, area);
+      const p = pinnedPosition({ ...settings, pillPinOffset: offset }, area);
+      w.setBounds(
+        clampBounds(
+          {
+            ...bounds,
+            ...p,
+            ...(this.dockMode
+              ? {
+                  x:
+                    settings.pillPlacement === "left"
+                      ? area.x
+                      : area.x + area.width - bounds.width,
+                }
+              : {}),
+          },
+          area,
+        ),
+      );
+      if (phase === "end") this.savePosition(p, offset);
+    }
+    if (phase === "end") this.drag = undefined;
+  }
   broadcast(channel: string, data: unknown) {
     for (const w of this.all()) w.webContents.send(channel, data);
   }
   destroy() {
+    clearInterval(this.slideTimer);
     for (const timer of this.releaseTimers.values()) clearTimeout(timer);
     this.releaseTimers.clear();
     for (const w of this.all()) w.destroy();

@@ -58,6 +58,7 @@ export function validateSettings(value: unknown): Partial<Settings> {
     "pillShowReset",
     "pillShowRefresh",
     "pillShowDragHandle",
+    "pillSideHideable",
   ] as const)
     if (typeof v[key] === "boolean") out[key] = v[key];
   if (

@@ -4,6 +4,22 @@ export interface Rect {
   width: number;
   height: number;
 }
+export function snapBounds(rect: Rect, area: Rect): Rect {
+  const result = clampBounds(rect, area);
+  const gap = 12,
+    distance = 32;
+  const left = area.x + gap,
+    right = area.x + area.width - rect.width - gap;
+  const top = area.y + gap;
+  if (Math.abs(result.x - left) <= distance) result.x = left;
+  else if (Math.abs(result.x - right) <= distance) result.x = right;
+  if (Math.abs(result.y - top) <= distance) {
+    result.y = top;
+    const center = Math.round(area.x + (area.width - rect.width) / 2);
+    if (Math.abs(result.x - center) <= 64) result.x = center;
+  }
+  return clampBounds(result, area);
+}
 export function clampBounds(rect: Rect, area: Rect): Rect {
   return {
     ...rect,
