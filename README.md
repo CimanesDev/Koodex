@@ -12,7 +12,8 @@ Choose the `nsis.exe` installer (recommended) or the `portable.exe` standalone l
 
 - Codex usage events and configurable polling down to 10 seconds; remaining percentages and reset countdowns.
 - Click the floating pill to switch quotas, or show both side by side.
-- Optional countdowns and a one-click refresh button on the pill.
+- Optional countdowns and a one-click refresh button on the pill. Routine refresh activity stays hidden by default.
+- Adjustable pill opacity (35�100%) with full visibility on hover or keyboard focus, plus a translucent glass-style surface.
 - Ring or bar indicators, five accent colors, and a unified hover surface.
 - A simple ring logo. Dual tray bars (top: 5-hour, bottom: weekly) or concentric rings (outer: 5-hour, inner: weekly).
 - Indicator-only pills, combined or separate indicators, optional grips on every placement, and top/side pins that drag along their edge.
@@ -40,12 +41,16 @@ Click the tray icon for usage details. Right-click the floating pill for **Setti
 
 In settings:
 
-- **Pill & appearance:** choose one or both limits, text or indicator-only, visual style cards (two bars, stacked bars, two rings, nested rings), accent, countdowns, quick refresh, switching behavior, and a usage meter/ring for the tray.
+- **Pill & appearance:** choose one or both limits, text or indicator-only, visual style cards (two bars, stacked bars, two rings, nested rings), accent, countdowns, quick refresh, switching behavior, opacity, Solid/Glass surfaces, and a usage meter/ring for the tray. Tray icon color follows the Windows taskbar theme; Light/Dark overrides are available.
 - **Placement:** drag anywhere on the pill, with or without its optional grip. A click still switches limits; moving at least five pixels starts a drag. Free placement snaps near the left/right edges and top center. Pins move along their edge. Returning to free placement restores the previous free position. Changing the pin preset resets its edge offset. Enable **Collapsible side tab** with left/right placement to reveal or hide the pill with an animated edge tab; it starts collapsed.
 - **Providers:** choose Codex or prepare the optional Claude Code bridge. One provider is displayed at a time.
 - **General:** configure startup, low-usage alerts, and background refresh frequency. Alerts fire once at 25%, 10%, and 0% remaining for each quota; a skipped threshold produces only the most urgent alert. Changing reset estimates does not repeat exhaustion alerts. Alerts rearm after the previous reset has passed and a fresh report confirms recovery.
 
 One-limit mode is **click-only by default**. Automatic cycling starts only if you choose an interval. Upgrading from 1.0/1.1 turns off the old implicit auto-switch once; subsequent explicit choices are preserved. Existing users keep their other preferences and skip the welcome screen.
+
+**Transparency:** lower **Pill opacity** under **Pill & appearance** to fade the whole pill. Hover or focus restores full opacity without changing the saved value. **Glass** adds a translucent tint and soft highlights; it is a glass-style finish, not Apple's native Liquid Glass or desktop blur. The live preview uses the same surface and opacity as the floating pill.
+
+**Quiet refreshes:** **General ? Show refresh activity** is off by default, including for existing installs. Background refreshes still update usage; connection and error indicators remain visible.
 
 Quick refresh requests a Codex snapshot or rereads the last Claude report. It cannot reset a quota. Tray bars and rings show both limits independently, rounded to 10% steps; the tooltip shows exact reported percentages. Top/outer always means 5-hour, bottom/inner means weekly, even when the other quota is absent. The static tray mark has been removed; previous mark selections migrate to the usage meter. With no data, the chosen usage icon shows empty tracks. Side-mounted combined bars are vertical: 5-hour on the left, weekly on the right.
 
@@ -117,6 +122,7 @@ npm run smoke
 npm run test:scenarios
 npm run test:customization
 npm run test:placement
+npm run test:appearance
 npm run test:interactions
 npm run test:customization -- --exe=release/1.5.0/win-unpacked/Koodex.exe
 npm run test:resources -- --exe=release/1.5.0/win-unpacked/Koodex.exe --label=1.5.0

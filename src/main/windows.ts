@@ -1,4 +1,11 @@
-import { app, BrowserWindow, screen, Menu, type WebContents } from "electron";
+import {
+  app,
+  BrowserWindow,
+  screen,
+  Menu,
+  powerMonitor,
+  type WebContents,
+} from "electron";
 import { join } from "node:path";
 import type { Settings } from "../shared/types";
 import { clampBounds, nearAnchor, snapBounds, type Rect } from "./positioning";
@@ -17,6 +24,14 @@ export class Windows {
   private expanded = false;
   private slideTimer?: NodeJS.Timeout;
   private dockMode = "";
+  private restoreOverlay = () => {
+    const w = this.pill;
+    if (!w || w.isDestroyed() || !w.isVisible()) return;
+    // Leave settings and usage details above the pill while open.
+    if (this.preferences?.isVisible() || this.popover?.isVisible()) return;
+    w.setAlwaysOnTop(true, "screen-saver");
+    w.moveTop();
+  };
   constructor(
     private getSettings: () => Settings,
     private savePosition: (
@@ -31,6 +46,8 @@ export class Windows {
     };
     screen.on("display-metrics-changed", reposition);
     screen.on("display-removed", reposition);
+    powerMonitor.on("resume", this.restoreOverlay);
+    powerMonitor.on("unlock-screen", this.restoreOverlay);
   }
   private all() {
     return [this.popover, this.pill, this.preferences].filter(
@@ -64,6 +81,8 @@ export class Windows {
         spellcheck: false,
       },
     });
+    // Use the overlay level, rather than the default floating-window level.
+    w.setAlwaysOnTop(true, "screen-saver");
     w.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
     w.webContents.on("will-navigate", (e) => e.preventDefault());
     w.once("ready-to-show", () => {
@@ -97,6 +116,7 @@ export class Windows {
     this.releaseTimers.delete(w);
     this.pendingShow.set(w, focus);
     if (!this.ready.has(w)) return;
+    if (focus || !w.isVisible()) w.setAlwaysOnTop(true, "screen-saver");
     if (focus) {
       w.show();
       w.focus();
@@ -216,6 +236,8 @@ export class Windows {
     if (!this.pill) {
       const w = this.create(204, 44, "pill");
       this.pill = w;
+      w.on("blur", this.restoreOverlay);
+      w.on("show", this.restoreOverlay);
       w.on("close", (e) => {
         e.preventDefault();
         this.hidePill();
@@ -251,6 +273,7 @@ export class Windows {
       settings.pillSwitchSeconds === 0 || settings.pillLayout === "both",
     );
     this.show(this.pill, false);
+    this.restoreOverlay();
   }
   private dockBounds(expanded: boolean): Rect {
     const settings = this.getSettings();
@@ -355,6 +378,8 @@ export class Windows {
     for (const w of this.all()) w.webContents.send(channel, data);
   }
   destroy() {
+    powerMonitor.removeListener("resume", this.restoreOverlay);
+    powerMonitor.removeListener("unlock-screen", this.restoreOverlay);
     clearInterval(this.slideTimer);
     for (const timer of this.releaseTimers.values()) clearTimeout(timer);
     this.releaseTimers.clear();

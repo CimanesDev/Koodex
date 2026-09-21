@@ -470,3 +470,84 @@ select {
     transition: none !important;
   }
 }
+
+/* Whole-pill opacity is shared with the live settings preview. */
+.pill {
+  opacity: var(--pill-opacity, 1);
+  transition:
+    opacity 160ms ease-out,
+    background 160ms ease-out,
+    border-color 160ms ease-out;
+}
+.pill:hover,
+.pill:focus-within {
+  opacity: 1;
+}
+.pill[data-material="glass"] {
+  background:
+    linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.18),
+      rgba(255, 255, 255, 0.025) 45%,
+      rgba(255, 255, 255, 0.09)
+    ),
+    rgba(20, 24, 30, 0.48);
+  border-color: rgba(255, 255, 255, 0.32);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.06);
+}
+.pill[data-material="glass"]:hover,
+.pill[data-material="glass"]:focus-within {
+  background-color: rgba(20, 24, 30, 0.85);
+  border-color: rgba(255, 255, 255, 0.48);
+}
+.pill[data-material="glass"] .pill-reset,
+.pill[data-material="glass"] .drag-handle {
+  color: #c2c8d0;
+}
+.pill-stale {
+  position: absolute;
+  right: 3px;
+  top: 1px;
+  pointer-events: none;
+}
+.pill {
+  position: relative;
+}
+.pill-refreshing {
+  color: var(--text-secondary);
+  animation: refresh-pulse 1s ease-in-out infinite;
+}
+@keyframes refresh-pulse {
+  50% {
+    opacity: 0.3;
+  }
+}
+.opacity-control {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 16px 0 0;
+  font-size: 12px;
+}
+.opacity-control > span {
+  display: flex;
+  justify-content: space-between;
+}
+.opacity-control output {
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.opacity-control input {
+  width: 100%;
+  accent-color: var(--progress);
+  margin: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pill,
+  .pill-refreshing {
+    animation: none;
+    transition: none;
+  }
+}

@@ -25,7 +25,8 @@
     "test:scenarios": "node scripts/scenarios.mjs",
     "test:live": "tsx scripts/check-live.ts",
     "test:packaged-live": "node scripts/packaged-live.mjs",
-    "format": "prettier --write src scripts tests package.json tsconfig.json vite.config.ts"
+    "format": "prettier --write src scripts tests package.json tsconfig.json vite.config.ts",
+    "test:appearance": "node scripts/appearance.mjs"
   },
   "dependencies": {
     "react": "^19.1.0",

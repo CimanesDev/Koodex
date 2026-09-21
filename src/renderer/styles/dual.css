@@ -97,3 +97,82 @@
   bottom: 0;
   left: 0;
 }
+
+/* Compact side layouts: the native window and preview share pillSize. */
+.pill-vertical {
+  padding: 4px 0;
+  border-radius: 16px;
+}
+.pill-vertical .drag-handle {
+  height: 16px;
+  min-height: 16px;
+  flex-basis: 16px;
+}
+.pill-vertical .pill-content {
+  padding: 4px 10px !important;
+  gap: 8px;
+  justify-content: center;
+  min-height: 0;
+}
+.pill-vertical .pill-quota {
+  flex-direction: row;
+  gap: 6px;
+  flex: 1;
+  min-height: 0;
+}
+.pill-vertical .pill-quota + .pill-quota {
+  padding-top: 6px !important;
+}
+.pill-vertical .pill-metric {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  gap: 4px;
+}
+.pill-vertical .pill-refresh {
+  margin: 0;
+  flex: 0 0 28px;
+}
+.pill-vertical.pill-minimal .pill-content {
+  padding: 4px 7px !important;
+  gap: 8px;
+}
+.pill-vertical.pill-minimal .pill-quota {
+  flex: 0 0 auto;
+}
+.pill-vertical.pill-minimal.pill-bar .pill-quota {
+  flex: 1;
+}
+.pill-vertical.pill-minimal .ring {
+  width: 24px;
+  height: 24px;
+  flex: none;
+}
+.pill-vertical.pill-minimal.pill-ring .pill-content {
+  justify-content: center;
+}
+.pill-vertical.pill-combined:not(.pill-minimal) .combined-quota {
+  flex-direction: row;
+  gap: 8px;
+}
+.pill-vertical.pill-combined .combined-labels {
+  gap: 8px;
+  min-width: 0;
+}
+.pill-vertical.pill-combined .dual-ring {
+  flex: none;
+}
+.pill-vertical .dual-bars-vertical {
+  height: 48px;
+  flex: 0 0 15px;
+}
+.pill-vertical.pill-combined.pill-minimal .combined-quota {
+  flex-direction: row;
+}
+.pill-vertical.pill-combined.pill-minimal .pill-content {
+  padding: 4px 7px !important;
+}
+
+.pill-vertical.pill-combined {
+  min-height: 0;
+}

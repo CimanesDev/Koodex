@@ -7,6 +7,7 @@ export class KoodexTray {
   readonly tray: Tray;
   private style: Settings["trayStyle"] = "meter";
   private amounts: readonly [number, number] = [-1, -1];
+  private color: Settings["trayColor"] = "auto";
   private iconKey = "";
   private menuKey = "";
   constructor(
@@ -26,14 +27,15 @@ export class KoodexTray {
       join(
         app.getAppPath(),
         "assets/tray",
-        `${nativeTheme.shouldUseDarkColors ? "light" : "dark"}-${this.style}-dual-${this.amounts[0]}-${this.amounts[1]}.png`,
+        `${this.color === "auto" ? (nativeTheme.shouldUseDarkColorsForSystemIntegratedUI ? "light" : "dark") : this.color}-${this.style}-dual-${this.amounts[0]}-${this.amounts[1]}.png`,
       ),
     );
   }
   render(state: Snapshot, settings: Settings) {
     this.style = settings.trayStyle;
+    this.color = settings.trayColor;
     this.amounts = trayLevels(state.usage?.windows ?? []);
-    const key = `${this.style}-${this.amounts.join("-")}`;
+    const key = this.color + "-" + `${this.style}-${this.amounts.join("-")}`;
     if (key !== this.iconKey) {
       this.tray.setImage(this.icon());
       this.iconKey = key;

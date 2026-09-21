@@ -6,75 +6,41 @@ export function pillSize(settings: Settings) {
   const both = settings.pillLayout === "both",
     minimal = settings.pillContent === "indicator",
     vertical = isVertical(settings),
-    grip = hasGrip(settings) ? 20 : 0,
+    combined = both && settings.pillBothStyle === "combined",
+    ring = settings.pillIndicator === "ring",
+    grip = hasGrip(settings) ? (vertical ? 16 : 20) : 0,
     refresh = settings.pillShowRefresh ? 32 : 0;
-  if (both && settings.pillBothStyle === "combined") {
+  if (vertical) {
     if (minimal)
-      return vertical
-        ? {
-            width: settings.pillIndicator === "ring" ? 44 : 36,
-            height:
-              (settings.pillIndicator === "ring" ? 44 : 112) + grip + refresh,
-          }
-        : {
-            width:
-              (settings.pillIndicator === "ring" ? 44 : 104) + grip + refresh,
-            height: 44,
-          };
-    return vertical
-      ? {
-          width: 142,
-          height:
-            (settings.pillIndicator === "ring" ? 112 : 160) +
-            (settings.pillShowReset ? 32 : 0) +
-            grip +
-            refresh,
-        }
-      : {
-          width: 224 + (hasGrip(settings) ? 0 : -12) + refresh,
-          height: 64 + (settings.pillShowReset ? 26 : 0),
-        };
-  }
-  if (minimal) {
-    if (vertical)
       return {
-        width: settings.pillIndicator === "ring" ? 44 : 36,
-        height:
-          (settings.pillIndicator === "ring" ? (both ? 80 : 44) : 112) +
-          grip +
-          refresh,
+        width: ring ? 40 : 36,
+        height: (ring ? (both && !combined ? 72 : 40) : 64) + grip + refresh,
       };
     return {
-      width:
-        (settings.pillIndicator === "ring"
-          ? both
-            ? 80
-            : 44
-          : both
-            ? 172
-            : 104) +
+      width: combined ? 144 : 132,
+      height:
+        (both ? 88 : 48) +
+        (settings.pillShowReset ? (both ? 28 : 14) : 0) +
         grip +
         refresh,
-      height: 40,
     };
   }
-  if (vertical)
+  if (combined) {
+    if (minimal)
+      return { width: (ring ? 44 : 104) + grip + refresh, height: 44 };
     return {
-      width: 132,
-      height:
-        (both ? 152 : 84) +
-        grip +
-        (settings.pillShowReset ? (both ? 32 : 16) : 0) +
-        refresh,
+      width: 224 + (hasGrip(settings) ? 0 : -12) + refresh,
+      height: 64 + (settings.pillShowReset ? 26 : 0),
+    };
+  }
+  if (minimal)
+    return {
+      width: (ring ? (both ? 80 : 44) : both ? 172 : 104) + grip + refresh,
+      height: 40,
     };
   return {
-    width:
-      (both ? 284 : 176) +
-      (settings.pillShowRefresh ? 32 : 0) -
-      (hasGrip(settings) ? 0 : 12),
-    height:
-      (settings.pillIndicator === "bar" ? 50 : 44) +
-      (settings.pillShowReset ? 18 : 0),
+    width: (both ? 284 : 176) + refresh - (hasGrip(settings) ? 0 : 12),
+    height: (ring ? 44 : 50) + (settings.pillShowReset ? 18 : 0),
   };
 }
 export interface WorkArea {

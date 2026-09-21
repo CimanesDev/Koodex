@@ -73,7 +73,7 @@ test("indicator-only rings and side bars have compact native geometry", () => {
       pillPlacement: "left",
       pillIndicator: "bar",
     }),
-    { width: 36, height: 132 },
+    { width: 36, height: 80 },
   );
   assert.deepEqual(
     pillSize({
@@ -84,7 +84,7 @@ test("indicator-only rings and side bars have compact native geometry", () => {
       pillLayout: "both",
       pillBothStyle: "combined",
     }),
-    { width: 44, height: 64 },
+    { width: 40, height: 56 },
   );
 });
 test("legacy installs migrate once without reopening setup", () => {
@@ -310,4 +310,38 @@ test("positions above bottom taskbar and clamps negative-coordinate monitors", (
     clampBounds({ x: 20, y: 2000, width: 204, height: 44 }, area).x,
     -204,
   );
+});
+
+test("appearance settings validate and migrate with quiet defaults", () => {
+  const old = migrateSettings({
+    settingsVersion: 2,
+    setupCompleted: true,
+    pillLayout: "both",
+  });
+  assert.equal(old.showRefreshActivity, false);
+  assert.equal(old.pillOpacity, 100);
+  assert.equal(old.pillMaterial, "solid");
+  assert.equal(old.trayColor, "auto");
+  assert.equal(old.setupCompleted, true);
+  const patch = {
+    pillOpacity: 55,
+    pillMaterial: "glass",
+    showRefreshActivity: true,
+    trayColor: "light",
+  };
+  assert.deepEqual(validateSettings(patch), patch);
+  for (const value of [-1, 0, 34, 101, NaN, Infinity, "50", null])
+    assert.equal(
+      validateSettings({ pillOpacity: value }).pillOpacity,
+      undefined,
+    );
+  assert.deepEqual(
+    validateSettings({
+      pillMaterial: "acrylic",
+      trayColor: "black",
+      showRefreshActivity: "false",
+    }),
+    {},
+  );
+  assert.equal(migrateSettings({ ...old, ...patch }).pillOpacity, 55);
 });

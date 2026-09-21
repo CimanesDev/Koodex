@@ -11,6 +11,17 @@ export function validateSettings(value: unknown): Partial<Settings> {
   if (!value || typeof value !== "object") return {};
   const v = value as Record<string, unknown>;
   const out: Partial<Settings> = {};
+  if (["auto", "light", "dark"].includes(v.trayColor as string))
+    out.trayColor = v.trayColor as Settings["trayColor"];
+  if (v.pillMaterial === "solid" || v.pillMaterial === "glass")
+    out.pillMaterial = v.pillMaterial;
+  if (
+    typeof v.pillOpacity === "number" &&
+    Number.isFinite(v.pillOpacity) &&
+    v.pillOpacity >= 35 &&
+    v.pillOpacity <= 100
+  )
+    out.pillOpacity = Math.round(v.pillOpacity);
   if (
     v.pillPinOffset === null ||
     (typeof v.pillPinOffset === "number" &&
@@ -56,6 +67,7 @@ export function validateSettings(value: unknown): Partial<Settings> {
     "notificationsEnabled",
     "floatingPillEnabled",
     "pillShowReset",
+    "showRefreshActivity",
     "pillShowRefresh",
     "pillShowDragHandle",
     "pillSideHideable",

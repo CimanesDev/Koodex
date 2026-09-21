@@ -68,6 +68,7 @@ export function SettingsView({
   function toggle(
     key:
       | "floatingPillEnabled"
+      | "showRefreshActivity"
       | "pillShowReset"
       | "pillShowRefresh"
       | "launchAtStartup"
@@ -352,6 +353,42 @@ export function SettingsView({
                 "Quick refresh",
                 "Add a refresh button to the pill.",
               )}
+              <h2 className="section-gap">Surface & transparency</h2>
+              <label className="select-row">
+                <span>Pill surface</span>
+                <select
+                  aria-label="Pill surface"
+                  value={settings.pillMaterial}
+                  onChange={(e) =>
+                    void update({
+                      pillMaterial: e.target.value as Settings["pillMaterial"],
+                    })
+                  }
+                >
+                  <option value="solid">Solid</option>
+                  <option value="glass">Glass</option>
+                </select>
+              </label>
+              <label className="opacity-control">
+                <span>
+                  Pill opacity <output>{settings.pillOpacity}%</output>
+                </span>
+                <input
+                  aria-label="Pill opacity"
+                  type="range"
+                  min="35"
+                  max="100"
+                  step="5"
+                  value={settings.pillOpacity}
+                  onChange={(e) =>
+                    void update({ pillOpacity: Number(e.target.value) })
+                  }
+                />
+              </label>
+              <p className="preference-note">
+                Hover or focus to bring the pill back to full opacity. Glass
+                adds a translucent surface and soft highlights.
+              </p>
               <h2 className="section-gap">Accent color</h2>
               <div
                 className="color-choices"
@@ -378,6 +415,22 @@ export function SettingsView({
             </section>
             <section className="tray-section">
               <h2>System tray icon</h2>
+              <label className="select-row">
+                <span>Icon color</span>
+                <select
+                  aria-label="Tray icon color"
+                  value={settings.trayColor}
+                  onChange={(e) =>
+                    void update({
+                      trayColor: e.target.value as Settings["trayColor"],
+                    })
+                  }
+                >
+                  <option value="auto">Match taskbar</option>
+                  <option value="light">Light icon</option>
+                  <option value="dark">Dark icon</option>
+                </select>
+              </label>
               <div
                 className="tray-choices"
                 role="group"
@@ -586,6 +639,11 @@ export function SettingsView({
             </section>
             <section>
               <h2>Stay up to date</h2>
+              {toggle(
+                "showRefreshActivity",
+                "Show refresh activity",
+                "Show a small activity indicator on the pill while refreshing. Off keeps routine updates quiet.",
+              )}
               <label className="select-row">
                 <span>Refresh interval</span>
                 <select

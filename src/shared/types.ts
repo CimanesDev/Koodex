@@ -40,6 +40,10 @@ export interface Settings {
   pillShowReset: boolean;
   pillShowRefresh: boolean;
   trayStyle: "meter" | "ring";
+  trayColor: "auto" | "light" | "dark";
+  showRefreshActivity: boolean;
+  pillOpacity: number;
+  pillMaterial: "solid" | "glass";
   setupCompleted: boolean;
   settingsVersion: number;
   pillPosition?: { x: number; y: number };
@@ -63,6 +67,10 @@ export const defaults: Settings = {
   pillShowReset: false,
   pillShowRefresh: false,
   trayStyle: "meter",
+  trayColor: "auto",
+  showRefreshActivity: false,
+  pillOpacity: 100,
+  pillMaterial: "solid",
   setupCompleted: false,
   settingsVersion: 2,
 };

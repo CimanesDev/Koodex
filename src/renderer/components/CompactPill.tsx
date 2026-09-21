@@ -1,4 +1,10 @@
-import { useEffect, useRef, useState, type PointerEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type PointerEvent,
+} from "react";
 import type { Settings, Snapshot, UsageWindow } from "../../shared/types";
 import { useAlternatingMetric } from "../hooks/useAlternatingMetric";
 import { UsageRing } from "./UsageRing";
@@ -168,11 +174,19 @@ export function CompactPill({
               : `${providerName} unavailable`}
         </span>
       )}
-      {state.syncState !== "synced" && (
-        <span className="pill-stale" title={state.syncState}>
-          ○
-        </span>
-      )}
+      {state.syncState !== "synced" &&
+        (state.syncState !== "refreshing" || settings.showRefreshActivity) && (
+          <span
+            className={
+              state.syncState === "refreshing"
+                ? "pill-stale pill-refreshing"
+                : "pill-stale"
+            }
+            title={state.syncState}
+          >
+            ○
+          </span>
+        )}
     </>
   );
   const pill = (
@@ -188,7 +202,13 @@ export function CompactPill({
           suppressClick.current = false;
         }
       }}
-      style={{ height: pillSize(settings).height }}
+      data-material={settings.pillMaterial}
+      style={
+        {
+          height: pillSize(settings).height,
+          "--pill-opacity": settings.pillOpacity / 100,
+        } as CSSProperties
+      }
       className={`pill ${both ? "pill-both" : ""} pill-${settings.pillIndicator} ${settings.pillShowReset && !minimal ? "pill-with-reset" : ""} ${preview ? "pill-preview" : ""} ${minimal ? "pill-minimal" : ""} ${vertical ? "pill-vertical" : ""} ${hasGrip(settings) ? "" : "pill-no-grip"} ${combined ? "pill-combined" : ""}`}
     >
       {hasGrip(settings) && (
