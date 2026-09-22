@@ -74,7 +74,31 @@ export const defaults: Settings = {
   setupCompleted: false,
   settingsVersion: 2,
 };
+export interface UpdateState {
+  status:
+    | "disabled"
+    | "idle"
+    | "checking"
+    | "current"
+    | "available"
+    | "downloading"
+    | "ready"
+    | "installing"
+    | "error";
+  currentVersion: string;
+  version?: string;
+  percent?: number;
+  checkedAt?: number;
+  message?: string;
+  failedAction?: "check" | "download" | "install";
+}
 export interface Bridge {
+  getUpdateState(): Promise<UpdateState>;
+  checkForUpdates(): Promise<UpdateState>;
+  downloadUpdate(): Promise<UpdateState>;
+  installUpdate(): Promise<UpdateState>;
+  openReleases(): Promise<void>;
+  onUpdateState(cb: (s: UpdateState) => void): () => void;
   dragPill(phase: "start" | "move" | "end" | "cancel"): Promise<void>;
   expandPill(expanded: boolean): Promise<void>;
   prepareClaudeBridge(): Promise<string>;

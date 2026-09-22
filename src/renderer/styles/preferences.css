@@ -475,3 +475,36 @@
     font-size: 18px;
   }
 }
+
+.update-panel {
+  grid-column: 1 / -1;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+.update-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.update-heading h2 {
+  margin-bottom: 0;
+  color: var(--text-primary);
+}
+.update-heading > span {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+.update-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.update-progress {
+  width: 100%;
+  height: 6px;
+  margin-top: 12px;
+  accent-color: var(--progress);
+}

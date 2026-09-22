@@ -1,6 +1,6 @@
 import { Tray, Menu, nativeImage, nativeTheme, app } from "electron";
 import { join } from "node:path";
-import type { Settings, Snapshot } from "../shared/types";
+import type { Settings, Snapshot, UpdateState } from "../shared/types";
 import type { Windows } from "./windows";
 import { trayLevels } from "../shared/quotas";
 export class KoodexTray {
@@ -31,7 +31,7 @@ export class KoodexTray {
       ),
     );
   }
-  render(state: Snapshot, settings: Settings) {
+  render(state: Snapshot, settings: Settings, updates?: UpdateState) {
     this.style = settings.trayStyle;
     this.color = settings.trayColor;
     this.amounts = trayLevels(state.usage?.windows ?? []);
@@ -64,6 +64,8 @@ export class KoodexTray {
       lines,
       settings.launchAtStartup,
       settings.floatingPillEnabled,
+      updates?.status,
+      updates?.version,
     ]);
     if (menuKey === this.menuKey) return;
     this.menuKey = menuKey;
@@ -94,6 +96,15 @@ export class KoodexTray {
         {
           label: "Settings",
           click: () => this.windows.openSettings(),
+        },
+        {
+          label:
+            updates?.status === "ready"
+              ? "Update ready to install..."
+              : updates?.status === "available"
+                ? `Update ${updates.version} available...`
+                : "App updates...",
+          click: () => this.windows.openSettings("general"),
         },
         { type: "separator" },
         { label: "Quit", click: () => app.quit() },

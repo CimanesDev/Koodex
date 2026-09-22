@@ -62,7 +62,12 @@ export class Windows {
   owns(contents: WebContents) {
     return this.all().some((w) => w.webContents === contents);
   }
-  private create(width: number, height: number, view: string) {
+  private create(
+    width: number,
+    height: number,
+    view: string,
+    section?: string,
+  ) {
     const w = new BrowserWindow({
       width,
       height,
@@ -109,10 +114,12 @@ export class Windows {
       }
     });
     if (!app.isPackaged && process.env.KOODEX_DEV_URL)
-      void w.loadURL(`${process.env.KOODEX_DEV_URL}/?view=${view}`);
+      void w.loadURL(
+        `${process.env.KOODEX_DEV_URL}/?view=${view}${section ? `&section=${section}` : ""}`,
+      );
     else
       void w.loadFile(join(__dirname, "../renderer/index.html"), {
-        query: { view },
+        query: { view, ...(section ? { section } : {}) },
       });
     return w;
   }
@@ -182,10 +189,10 @@ export class Windows {
     if (this.popover?.isVisible()) this.hidePopover();
     else if (Date.now() - this.blurredAt > 200) this.open(anchor);
   }
-  openSettings() {
+  openSettings(section?: "general") {
     this.hidePopover();
     if (!this.preferences) {
-      const w = this.create(740, 760, "settings");
+      const w = this.create(740, 760, "settings", section);
       this.preferences = w;
       w.on("blur", () => this.closeSettings());
       w.on("close", (e) => {
@@ -209,6 +216,7 @@ export class Windows {
         area,
       ),
     );
+    if (section) this.preferences.webContents.send("view", "updates");
     this.show(this.preferences, true);
   }
   resize(height: number) {

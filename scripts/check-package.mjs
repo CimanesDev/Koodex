@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { listPackage } from "@electron/asar";
 import { readdirSync, readFileSync, statSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { load } from "js-yaml";
 import { join, resolve } from "node:path";
 const { version } = JSON.parse(readFileSync("package.json", "utf8"));
 const directory = resolve("release", version, "win-unpacked");
@@ -54,4 +56,30 @@ console.log(
 );
 console.log(
   "Package audit passed: required assets present; only English locale; no duplicate runtime dependencies, screenshots or debug maps.",
+);
+
+const updateConfig = load(
+  readFileSync(join(directory, "resources", "app-update.yml"), "utf8"),
+);
+assert.equal(updateConfig.provider, "github");
+assert.equal(updateConfig.owner, "CimanesDev");
+assert.equal(updateConfig.repo, "Koodex");
+const metadata = load(
+  readFileSync(resolve("release", version, "latest.yml"), "utf8"),
+);
+assert.equal(metadata.version, version);
+const installerName = `Koodex-${version}-x64-nsis.exe`;
+const updateFile = metadata.files.find((file) => file.url === installerName);
+assert.ok(updateFile, "Update metadata must target the NSIS installer");
+const installer = readFileSync(resolve("release", version, installerName));
+assert.equal(updateFile.size, installer.length);
+assert.equal(
+  updateFile.sha512,
+  createHash("sha512").update(installer).digest("base64"),
+);
+assert.ok(
+  statSync(resolve("release", version, installerName + ".blockmap")).size > 0,
+);
+console.log(
+  "Update metadata audit passed: GitHub feed, NSIS target, SHA-512, size, and blockmap.",
 );

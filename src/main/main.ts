@@ -1,7 +1,14 @@
-import { app, ipcMain, Notification, type IpcMainInvokeEvent } from "electron";
-import { join } from "node:path";
-import { watchFile, unwatchFile } from "node:fs";
+import {
+  app,
+  ipcMain,
+  Notification,
+  shell,
+  type IpcMainInvokeEvent,
+} from "electron";
+import { join, dirname } from "node:path";
+import { watchFile, unwatchFile, existsSync } from "node:fs";
 import { claudeFile, connectClaude, readClaude } from "./claude";
+import { Updates } from "./updates";
 import { Store, validateSettings } from "./settings";
 import { Windows } from "./windows";
 import { KoodexTray } from "./tray";
@@ -24,6 +31,7 @@ let quitting = false;
 let windows: Windows | undefined;
 let tray: KoodexTray | undefined;
 let timer: NodeJS.Timeout | undefined;
+let updates: Updates | undefined;
 if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
@@ -36,6 +44,7 @@ if (!app.requestSingleInstanceLock()) {
     e.preventDefault();
     quitting = true;
     clearTimeout(timer);
+    updates?.stop();
     unwatchFile(claudeFile(app.getPath("userData")));
     void server.stop().finally(() => {
       tray?.tray.destroy();
@@ -105,7 +114,7 @@ if (!app.requestSingleInstanceLock()) {
     const publish = () => {
       if (quitting) return;
       windows?.broadcast("usage", state);
-      tray?.render(state, settings);
+      tray?.render(state, settings, updates?.get());
     };
     const schedule = () => {
       clearTimeout(timer);
@@ -225,7 +234,7 @@ if (!app.requestSingleInstanceLock()) {
       }
       windows?.broadcast("settings", settings);
       windows?.syncPill();
-      tray?.render(state, settings);
+      tray?.render(state, settings, updates?.get());
       if (!busy) schedule();
       return settings;
     }
@@ -240,7 +249,29 @@ if (!app.requestSingleInstanceLock()) {
       },
       () => update({ floatingPillEnabled: false }),
     );
+    const disabledUpdates =
+      !app.isPackaged || process.env.KOODEX_TEST_DATA || mock
+        ? "Update installation is available in the installed Windows app."
+        : process.env.PORTABLE_EXECUTABLE_FILE ||
+            !existsSync(join(dirname(process.execPath), "Uninstall Koodex.exe"))
+          ? "Portable and unpacked copies update by replacing the app. Download the latest release below."
+          : undefined;
+    updates = new Updates(
+      app.getVersion(),
+      () => {
+        // Keep the updater lazy so tray-only startup stays light.
+        const { NsisUpdater } =
+          require("electron-updater") as typeof import("electron-updater");
+        return new NsisUpdater();
+      },
+      (updateState) => {
+        windows?.broadcast("updates", updateState);
+        tray?.render(state, settings, updateState);
+      },
+      disabledUpdates,
+    );
     tray = new KoodexTray(windows, () => void refresh(), update);
+    updates.start();
     publish();
     const handle = (name: string, fn: (arg: any) => unknown) =>
       ipcMain.handle(name, (event: IpcMainInvokeEvent, arg: unknown) => {
@@ -252,6 +283,15 @@ if (!app.requestSingleInstanceLock()) {
           throw new Error("Untrusted IPC");
         return fn(arg);
       });
+    handle("updates:get", () => updates!.get());
+    handle("updates:check", () => updates!.check());
+    handle("updates:download", () => updates!.download());
+    handle("updates:install", () => updates!.install());
+    handle("updates:releases", () =>
+      shell.openExternal(
+        "https://github.com/CimanesDev/Koodex/releases/latest",
+      ),
+    );
     handle("usage:get", () => state);
     ipcMain.handle("pill:drag", (event, phase) => {
       if (
@@ -285,7 +325,7 @@ if (!app.requestSingleInstanceLock()) {
       windows!.broadcast("settings", settings);
       windows!.syncPill();
       windows!.closeSettings();
-      tray!.render(state, settings);
+      tray!.render(state, settings, updates?.get());
     });
     handle("popover:open", () => windows!.open());
     handle("popover:hide", () => windows!.hidePopover());

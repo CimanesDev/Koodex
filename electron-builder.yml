@@ -34,3 +34,9 @@ nsis:
   deleteAppDataOnUninstall: false
 portable:
   artifactName: "Koodex-${version}-${arch}-portable.${ext}"
+
+publish:
+  provider: github
+  owner: CimanesDev
+  repo: Koodex
+  releaseType: release

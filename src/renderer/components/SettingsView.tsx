@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { Settings, Snapshot } from "../../shared/types";
+import { UpdatePanel } from "./UpdatePanel";
 import { pillSize } from "../../shared/pill";
 import { CompactPill } from "./CompactPill";
 import { BrandMark, TraySymbol, PillStyleSymbol } from "./Icons";
@@ -33,7 +34,18 @@ export function SettingsView({
   useEffect(() => {
     if (pending.current === 0) setSettings(incomingSettings);
   }, [incomingSettings]);
-  const [tab, setTab] = useState("pill");
+  const [tab, setTab] = useState(
+    new URLSearchParams(location.search).get("section") === "general"
+      ? "general"
+      : "pill",
+  );
+  useEffect(
+    () =>
+      window.Koodex.onView((view) => {
+        if (view === "updates") setTab("general");
+      }),
+    [],
+  );
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [claudeStatus, setClaudeStatus] = useState("");
@@ -617,6 +629,7 @@ export function SettingsView({
         )}
         {tab === "general" && (
           <div className="preferences-grid">
+            <UpdatePanel />
             <section>
               <h2>Quiet by default</h2>
               {toggle(
@@ -631,7 +644,7 @@ export function SettingsView({
               )}
             </section>
             <section>
-              <h2>Stay up to date</h2>
+              <h2>Usage refresh</h2>
               {toggle(
                 "showRefreshActivity",
                 "Show refresh activity",

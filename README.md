@@ -100,15 +100,19 @@ npm run build
 npm run dist
 ```
 
-Version 1.6.1 outputs in `release/1.6.1/`:
+Version 1.7.0 outputs in `release/1.7.0/`:
 
-- `Koodex-1.6.1-x64-nsis.exe` - per-user installer, no administrator privileges required.
-- `Koodex-1.6.1-x64-portable.exe` - standalone launcher.
+- `Koodex-1.7.0-x64-nsis.exe` - per-user installer, no administrator privileges required.
+- `Koodex-1.7.0-x64-portable.exe` - standalone launcher.
 - `win-unpacked/Koodex.exe` - unpacked app (keep its adjacent files).
 
-To update an installed copy, quit Koodex and run the new NSIS installer. It replaces the previous installation and keeps your preferences; no manual uninstall is needed. Koodex does not currently download or install updates automatically. For a portable copy, quit the old launcher and replace it at the same path. Builds are unsigned unless electron-builder signing is configured. Uninstall preserves preferences and cached usage. Keep the portable launcher at a stable path if enabling startup. Normal Windows startup is silent after setup.
+To update an installed copy, quit Koodex and run the new NSIS installer. It replaces the previous installation and keeps your preferences; no manual uninstall is needed. Starting with 1.7.0, installed copies check GitHub shortly after launch and every six hours. Open **General > App updates** (or **App updates** in the tray menu), choose **Download update**, then **Restart and install**. Downloads are verified before installation. Nothing installs on ordinary quit or shutdown. Versions 1.6.1 and earlier need one manual installer update to gain this feature. Portable and unpacked copies use **View releases** instead. For a portable copy, quit the old launcher and replace it at the same path. Builds are unsigned unless electron-builder signing is configured. Uninstall preserves preferences and cached usage. Keep the portable launcher at a stable path if enabling startup. Normal Windows startup is silent after setup.
 
 The icon source is `assets/icons/koodex.svg`. `node scripts/icons.mjs` regenerates the PNG/ICO assets and tray icon variants from their matching geometry. `./scripts/installer-art.ps1` regenerates the small branded setup bitmaps; installer copy lives in `build/installer.nsh`. Branding does not replace code signing: unsigned builds may still show a Windows publisher warning.
+
+## Publishing updates
+
+`npm run dist` builds locally without publishing. Upload the NSIS installer, its `.blockmap`, `latest.yml`, the portable executable, and `SHA256SUMS.txt` together to a stable GitHub release with a `v` version tag. Keep the release as a draft until every asset is uploaded. `latest.yml` must refer to the NSIS installer, with the generated SHA-512 hash intact. The package audit checks these values. Never replace the binaries of an already published version; build a higher version instead.
 
 ## Checks
 
@@ -124,9 +128,11 @@ npm run test:customization
 npm run test:placement
 npm run test:appearance
 npm run test:interactions
-npm run test:customization -- --exe=release/1.6.1/win-unpacked/Koodex.exe
-npm run test:resources -- --exe=release/1.6.1/win-unpacked/Koodex.exe --label=1.6.1
+npm run test:customization -- --exe=release/1.7.0/win-unpacked/Koodex.exe
+npm run test:resources -- --exe=release/1.7.0/win-unpacked/Koodex.exe --label=1.7.0
 npm run test:package
+npm run test:updater
+npm run test:update-ui
 ./scripts/check-installer.ps1
 npm run test:live
 npm run test:packaged-live
