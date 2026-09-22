@@ -1,7 +1,7 @@
 import { _electron as electron, expect } from "@playwright/test";
 import assert from "node:assert/strict";
 import { resolve, join } from "node:path";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, writeFileSync, readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { getPage, openSettings } from "./windows.mjs";
 mkdirSync(".smoke-data", { recursive: true });
@@ -182,10 +182,13 @@ try {
     (await pill.evaluate(() => window.Koodex.getUsage())).usage,
     null,
   );
-  await prefs.getByRole("button", { name: "Prepare Claude bridge" }).click();
-  await expect(
-    prefs.getByLabel("Claude status-line configuration"),
-  ).toHaveValue(/statusLine/);
+  const claudeSettings = JSON.parse(
+    readFileSync(join(directory, "claude-config", "settings.json"), "utf8"),
+  );
+  assert.equal(claudeSettings.statusLine.type, "command");
+  await expect(prefs.getByRole("status")).toContainText(
+    "Connected automatically",
+  );
   const send = (amount) =>
     spawnSync(process.execPath, [join(directory, "claude-bridge.cjs")], {
       input: JSON.stringify({

@@ -1,7 +1,7 @@
 appId: com.koodex.desktop
 productName: Koodex
 directories:
-  output: release/1.6.0
+  output: release/${version}
 electronLanguages:
   - en-US
 compression: maximum

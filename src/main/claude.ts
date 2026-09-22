@@ -1,14 +1,111 @@
-import { copyFileSync, readFileSync, statSync } from "node:fs";
+import {
+  copyFileSync,
+  readFileSync,
+  statSync,
+  existsSync,
+  mkdirSync,
+  writeFileSync,
+  renameSync,
+  unlinkSync,
+  constants,
+} from "node:fs";
+import { execFileSync } from "node:child_process";
+import { homedir } from "node:os";
 import { join } from "node:path";
 import type { Snapshot, UsageWindow } from "../shared/types";
 
 export const claudeFile = (directory: string) =>
   join(directory, "claude-usage.json");
 
+export function connectClaude(
+  appPath: string,
+  directory: string,
+  configDirectory = process.env.CLAUDE_CONFIG_DIR || join(homedir(), ".claude"),
+): string {
+  const path = join(configDirectory, "settings.json");
+  const existed = existsSync(path);
+  const original = existed ? readFileSync(path, "utf8") : "{}";
+  let settings;
+  try {
+    settings = JSON.parse(original.replace(/^\uFEFF/, ""));
+    if (!settings || typeof settings !== "object" || Array.isArray(settings))
+      throw new Error();
+  } catch {
+    throw new Error(
+      "Claude settings contain invalid JSON. Fix settings.json, then reconnect.",
+    );
+  }
+  try {
+    execFileSync("node", ["--version"], {
+      windowsHide: true,
+      timeout: 3000,
+      stdio: "ignore",
+    });
+  } catch {
+    throw new Error(
+      "Claude connection needs Node.js on PATH. Install Node.js, then reconnect.",
+    );
+  }
+  const config = JSON.parse(prepareClaudeBridge(appPath, directory));
+  const previous = settings.statusLine;
+  if (
+    previous &&
+    (previous.type !== "command" || typeof previous.command !== "string")
+  )
+    throw new Error(
+      "Claude has an unsupported status line. Its settings were left unchanged.",
+    );
+  // Recognize our original manual bridge and this installation's managed bridge.
+  const base = config.statusLine.command.slice(0, -1);
+  if (
+    previous?.command === config.statusLine.command ||
+    previous?.command.startsWith(base + ".previousCommand=")
+  )
+    return "Claude Code is connected. Usage updates after Claude responds.";
+  const encoded = Buffer.from(previous?.command || "").toString("base64");
+  config.statusLine.command =
+    base + ".previousCommand='" + encoded + "'" + String.fromCharCode(34);
+  mkdirSync(configDirectory, { recursive: true });
+  if (existed) {
+    copyFileSync(
+      path,
+      join(
+        configDirectory,
+        `settings.koodex-backup-${Date.now()}-${process.pid}.json`,
+      ),
+      constants.COPYFILE_EXCL,
+    );
+  }
+  const temporary = `${path}.koodex-${process.pid}.tmp`;
+  try {
+    writeFileSync(
+      temporary,
+      JSON.stringify(
+        { ...settings, statusLine: { ...previous, ...config.statusLine } },
+        null,
+        2,
+      ) + "\n",
+      { mode: 0o600 },
+    );
+    if (
+      existsSync(path) !== existed ||
+      (existed && readFileSync(path, "utf8") !== original)
+    )
+      throw new Error(
+        "Claude settings changed during setup. Please reconnect.",
+      );
+    renameSync(temporary, path);
+  } finally {
+    if (existsSync(temporary)) unlinkSync(temporary);
+  }
+  return "Claude Code is connected. Usage updates after Claude responds.";
+}
+
 export function prepareClaudeBridge(
   appPath: string,
   directory: string,
 ): string {
+  mkdirSync(directory, { recursive: true });
   const destination = join(directory, "claude-bridge.cjs");
   copyFileSync(join(appPath, "assets", "claude-bridge.cjs"), destination);
   // Base64 avoids shell interpretation of spaces or special characters in user paths.
@@ -101,7 +198,7 @@ export function readClaude(directory: string): Snapshot {
       usage: null,
       syncState: "offline",
       error:
-        "Waiting for Claude Code. Open Settings > Providers to set up the local status-line bridge.",
+        "Waiting for Claude Code to report usage. Complete a response in a signed-in Claude Code session.",
     };
   }
 }

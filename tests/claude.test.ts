@@ -1,10 +1,17 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  mkdtempSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+  readdirSync,
+} from "node:fs";
 import { resolve, join } from "node:path";
 import { spawnSync } from "node:child_process";
 import {
   adaptClaude,
+  connectClaude,
   prepareClaudeBridge,
   readClaude,
 } from "../src/main/claude";
@@ -73,4 +80,90 @@ test("Claude partial and malformed windows never invent percentages", () => {
   assert.equal(state.usage!.windows.length, 1);
   assert.equal(state.usage!.windows[0].id, "weekly");
   assert.equal(state.usage!.windows[0].remainingPercent, null);
+});
+
+function setupFixture() {
+  mkdirSync(".smoke-data", { recursive: true });
+  const root = mkdtempSync(resolve(".smoke-data", "claude-setup-"));
+  const config = join(root, "config");
+  mkdirSync(config);
+  return { root, config, path: join(config, "settings.json") };
+}
+
+test("automatic Claude setup preserves settings, original output and input, and is idempotent", () => {
+  const { root, config, path } = setupFixture();
+  const previousCommand = `node -e "let s='';process.stdin.on('data',c=>s+=c);process.stdin.on('end',()=>process.stdout.write('original:'+JSON.parse(s).model.id))"`;
+  const original = JSON.stringify({
+    permissions: { allow: ["Read"] },
+    statusLine: { type: "command", command: previousCommand, padding: 3 },
+  });
+  writeFileSync(path, original);
+  connectClaude(resolve("."), root, config);
+  const saved = readFileSync(path, "utf8");
+  const settings = JSON.parse(saved);
+  assert.deepEqual(settings.permissions, { allow: ["Read"] });
+  assert.equal(settings.statusLine.padding, 3);
+  const backups = readdirSync(config).filter((name) => name.includes("backup"));
+  assert.equal(backups.length, 1);
+  assert.equal(readFileSync(join(config, backups[0]), "utf8"), original);
+  connectClaude(resolve("."), root, config);
+  assert.equal(readFileSync(path, "utf8"), saved);
+  assert.equal(
+    readdirSync(config).filter((name) => name.includes("backup")).length,
+    1,
+  );
+  // Exercise the installed command, including its preservation of stdin and stdout.
+  const result = spawnSync(settings.statusLine.command, {
+    shell: true,
+    encoding: "utf8",
+    input: JSON.stringify({
+      model: { id: "test-model" },
+      rate_limits: { five_hour: { used_percentage: 12 } },
+    }),
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout, "original:test-model");
+  assert.equal(readClaude(root).usage!.windows[0].remainingPercent, 88);
+});
+
+test("automatic Claude setup handles a new install and refuses invalid settings without changing them", () => {
+  const { root, config, path } = setupFixture();
+  connectClaude(resolve("."), root, config);
+  assert.equal(
+    JSON.parse(readFileSync(path, "utf8")).statusLine.type,
+    "command",
+  );
+  assert.equal(
+    readdirSync(config).filter((name) => name.includes("backup")).length,
+    0,
+  );
+  for (const invalid of [
+    "{broken",
+    "null",
+    "[]",
+    '{"statusLine":{"type":"unknown"}}',
+  ]) {
+    writeFileSync(path, invalid);
+    assert.throws(() => connectClaude(resolve("."), root, config));
+    assert.equal(readFileSync(path, "utf8"), invalid);
+  }
+});
+
+test("an intentionally empty existing status line stays empty", () => {
+  const { root, config, path } = setupFixture();
+  writeFileSync(
+    path,
+    JSON.stringify({
+      statusLine: { type: "command", command: 'node -e "process.exit(0)"' },
+    }),
+  );
+  connectClaude(resolve("."), root, config);
+  const command = JSON.parse(readFileSync(path, "utf8")).statusLine.command;
+  const result = spawnSync(command, {
+    shell: true,
+    encoding: "utf8",
+    input: "{}",
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout, "");
 });

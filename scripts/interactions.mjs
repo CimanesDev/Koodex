@@ -72,16 +72,20 @@ try {
   );
   for (const side of ["left", "right"]) {
     await update({ pillPlacement: side, pillSideHideable: true });
-    await expect.poll(async () => (await bounds()).width).toBe(36);
-    assert.equal(await page.evaluate(() => getComputedStyle(document.body).overflow), "hidden");
+    await expect.poll(async () => (await bounds()).width).toBe(32);
+    assert.equal(
+      await page.evaluate(() => getComputedStyle(document.body).overflow),
+      "hidden",
+    );
     await page.getByRole("button", { name: "Show usage pill" }).click();
-    await expect.poll(async () => (await bounds()).width).toBe(168);
+    await expect.poll(async () => (await bounds()).width).toBe(164);
     await expect(
       page.getByRole("button", { name: "Hide usage pill" }),
     ).toHaveAttribute("aria-expanded", "true");
     await page.screenshot({ path: join(directory, `${side}-expanded.png`) });
-    await page.getByRole("button", { name: "Hide usage pill" }).click();
-    await expect.poll(async () => (await bounds()).width).toBe(36);
+    await page.getByRole("button", { name: "Hide usage pill" }).focus();
+    await page.keyboard.press("Escape");
+    await expect.poll(async () => (await bounds()).width).toBe(32);
     await page.screenshot({ path: join(directory, `${side}-collapsed.png`) });
   }
   assert.equal(

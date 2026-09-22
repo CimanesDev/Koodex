@@ -1,7 +1,7 @@
 import { app, ipcMain, Notification, type IpcMainInvokeEvent } from "electron";
 import { join } from "node:path";
 import { watchFile, unwatchFile } from "node:fs";
-import { claudeFile, prepareClaudeBridge, readClaude } from "./claude";
+import { claudeFile, connectClaude, readClaude } from "./claude";
 import { Store, validateSettings } from "./settings";
 import { Windows } from "./windows";
 import { KoodexTray } from "./tray";
@@ -50,6 +50,33 @@ if (!app.requestSingleInstanceLock()) {
       settings.provider === "claude"
         ? readClaude(app.getPath("userData"))
         : { provider: "codex", usage: store.cache(), syncState: "stale" };
+    let claudeSetupError = "";
+    function setupClaude() {
+      try {
+        const result = connectClaude(
+          app.getAppPath(),
+          app.getPath("userData"),
+          process.env.KOODEX_TEST_DATA
+            ? join(app.getPath("userData"), "claude-config")
+            : undefined,
+        );
+        claudeSetupError = "";
+        return result;
+      } catch (error) {
+        claudeSetupError =
+          error instanceof Error
+            ? error.message
+            : "Could not connect Claude Code.";
+        throw error;
+      }
+    }
+    if (settings.provider === "claude") {
+      try {
+        setupClaude();
+      } catch {
+        /* Report the actionable setup error through usage state. */
+      }
+    }
     let busy = false;
     let generation = 0;
     let pendingRefresh = false;
@@ -104,7 +131,15 @@ if (!app.requestSingleInstanceLock()) {
       };
       publish();
       try {
-        if (provider === "claude") state = readClaude(app.getPath("userData"));
+        if (provider === "claude")
+          state = claudeSetupError
+            ? {
+                provider,
+                usage: null,
+                syncState: "error",
+                error: claudeSetupError,
+              }
+            : readClaude(app.getPath("userData"));
         else if (mock) state = { ...mockSnapshot(mock), provider };
         else {
           const usage = adaptUsage(await server.read());
@@ -165,6 +200,8 @@ if (!app.requestSingleInstanceLock()) {
         clean.pillPlacement !== settings.pillPlacement
       )
         next.pillPinOffset = null;
+      if (next.provider === "claude" && next.provider !== settings.provider)
+        setupClaude();
       store.write("settings", next);
       const providerChanged = next.provider !== settings.provider;
       settings = next;
@@ -230,9 +267,11 @@ if (!app.requestSingleInstanceLock()) {
       )
         windows.expandPill(expanded);
     });
-    handle("claude:prepare", () =>
-      prepareClaudeBridge(app.getAppPath(), app.getPath("userData")),
-    );
+    handle("claude:prepare", () => {
+      const result = setupClaude();
+      void refresh();
+      return result;
+    });
     handle("usage:refresh", refresh);
     handle("settings:get", () => settings);
     handle("settings:update", update);

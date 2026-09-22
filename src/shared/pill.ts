@@ -1,4 +1,5 @@
 import type { Settings } from "./types";
+export const DOCK_TAB_WIDTH = 32;
 export const isVertical = (settings: Settings) =>
   settings.pillPlacement === "left" || settings.pillPlacement === "right";
 export const hasGrip = (settings: Settings) => settings.pillShowDragHandle;

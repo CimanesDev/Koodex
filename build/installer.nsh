@@ -5,7 +5,7 @@
 !macroend
 
 !define MUI_FINISHPAGE_TITLE "Koodex is ready"
-!define MUI_FINISHPAGE_TEXT "Find Koodex in your system tray.$\r$\n$\r$\nOn first launch, choose your pill style, position and provider. Connect using your existing Codex CLI or set up the optional Claude Code bridge in Providers.$\r$\n$\r$\nMade by cimanesdev."
+!define MUI_FINISHPAGE_TEXT "Find Koodex in your system tray.$\r$\n$\r$\nOn first launch, choose your pill style, position and provider. Connect using your existing Codex CLI or select Claude Code in Providers to connect automatically.$\r$\n$\r$\nMade by cimanesdev."
 !define MUI_FINISHPAGE_RUN_TEXT "Open Koodex"
 
 !macro customHeader

@@ -1,8 +1,9 @@
 import { _electron as electron, expect } from "@playwright/test";
 import assert from "node:assert/strict";
 import { resolve } from "node:path";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync, readFileSync } from "node:fs";
 import { openPopover } from "./windows.mjs";
+const { version } = JSON.parse(readFileSync("package.json", "utf8"));
 const testData = resolve(".smoke-data", "packaged-live");
 mkdirSync(testData, { recursive: true });
 writeFileSync(
@@ -20,7 +21,7 @@ const env = {
 delete env.ELECTRON_RUN_AS_NODE;
 delete env.KOODEX_MOCK;
 const app = await electron.launch({
-  executablePath: resolve("release/1.6.0/win-unpacked/Koodex.exe"),
+  executablePath: resolve(`release/${version}/win-unpacked/Koodex.exe`),
   args: [],
   env,
 });

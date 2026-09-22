@@ -111,13 +111,13 @@
 }
 .preferences-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 28px;
   animation: appear 160ms ease-out;
 }
 .style-choices {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 8px;
 }
 .style-choice {
@@ -150,9 +150,13 @@
   border-top: 1px solid var(--border);
   padding-top: 18px;
 }
+.tray-section > .select-row {
+  margin: 0 0 16px;
+  max-width: 260px;
+}
 .tray-section .tray-choices {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
 }
 .maker-credit {
   display: block;
@@ -168,7 +172,7 @@
 }
 .choice-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 8px;
 }
 .choice-card {
@@ -241,7 +245,10 @@
   color: var(--text-secondary);
 }
 .select-row select {
-  height: 34px;
+  min-height: 34px;
+  width: 100%;
+  min-width: 0;
+  flex-shrink: 0;
   padding: 6px 10px;
   font-size: 12px;
   border-radius: 8px;
@@ -338,6 +345,7 @@
   gap: 8px;
 }
 .tray-choice {
+  min-width: 0;
   display: flex;
   align-items: center;
   text-align: left;
@@ -350,6 +358,12 @@
 .tray-choice > svg {
   flex-shrink: 0;
   color: var(--progress);
+}
+.tray-choice > span {
+  min-width: 0;
+}
+.tray-choice small {
+  line-height: 1.5;
 }
 .tray-choice strong {
   display: block;
@@ -439,6 +453,9 @@
   user-select: text;
 }
 @media (max-width: 570px) {
+  .tray-section .tray-choices {
+    grid-template-columns: 1fr;
+  }
   .preferences-grid {
     grid-template-columns: 1fr;
     gap: 20px;

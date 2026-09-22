@@ -58,9 +58,9 @@ For faster Codex updates, select **General > Refresh interval > Live · every 10
 
 ## Claude Code and other providers
 
-In **Providers**, select **Claude Code (bridge)** and click **Prepare Claude bridge**. This copies a small script into Koodex's user-data folder and displays a JSON configuration entry. Merge the `statusLine` entry into `~/.claude/settings.json`. Back up an existing status line before replacing it; Koodex never edits Claude's configuration automatically. Node.js must be on PATH. Run a Claude Code session with a supported Pro/Max account and complete a response to receive quota data.
+In **Providers**, select **Claude Code**. Koodex connects automatically, including on subsequent app launches. It merges the bridge into `~/.claude/settings.json` (or `CLAUDE_CONFIG_DIR`), keeps a dated backup before changes, and forwards the same input to an existing status-line command so its output is preserved. Invalid settings are left untouched with an error you can fix before reconnecting. Node.js must be on PATH. Run a supported, signed-in Claude Code session and complete a response to receive quota data. **Reconnect Claude Code** repairs the connection if you change your Claude configuration.
 
-The bridge follows Claude's [documented status-line rate-limit fields](https://code.claude.com/docs/en/statusline), whose current example requires Claude Code 2.1.251+. It saves only five-hour/seven-day percentages, reset timestamps, and local receipt time. It does not save prompts, session IDs, transcripts, paths, or credentials. Koodex detects changed reports within about half a second, marks reports stale after approximately a minute or when a reported reset expires, and keeps the original timestamp when you refresh. An idle or unsupported Claude session cannot supply fresh account usage. Missing quota fields remain unavailable. The bridge represents the latest reporting session; it is not a multi-account aggregator. Remove the `statusLine` entry to disconnect it.
+The bridge follows Claude's [documented status-line rate-limit fields](https://code.claude.com/docs/en/statusline), whose current example requires Claude Code 2.1.251+. It saves only five-hour/seven-day percentages, reset timestamps, and local receipt time. It does not save prompts, session IDs, transcripts, paths, or credentials. Koodex detects changed reports within about half a second, marks reports stale after approximately a minute or when a reported reset expires, and keeps the original timestamp when you refresh. An idle or unsupported Claude session cannot supply fresh account usage. Missing quota fields remain unavailable. The bridge represents the latest reporting session; it is not a multi-account aggregator. To disconnect, select Codex first, then restore `statusLine` from the dated settings backup (or remove it if you had no previous status line).
 
 Claude support has been validated with documented sample payloads and real Electron/file integration, not a live Claude subscription in this environment. The installed Claude CLI here is older than the version required by the current example.
 
@@ -100,13 +100,13 @@ npm run build
 npm run dist
 ```
 
-Version 1.6 outputs in `release/1.6.0/`:
+Version 1.6.1 outputs in `release/1.6.1/`:
 
-- `Koodex-1.6.0-x64-nsis.exe` - per-user installer, no administrator privileges required.
-- `Koodex-1.6.0-x64-portable.exe` - standalone launcher.
+- `Koodex-1.6.1-x64-nsis.exe` - per-user installer, no administrator privileges required.
+- `Koodex-1.6.1-x64-portable.exe` - standalone launcher.
 - `win-unpacked/Koodex.exe` - unpacked app (keep its adjacent files).
 
-Quit an older running Koodex before starting the new version. Builds are unsigned unless electron-builder signing is configured. Uninstall preserves preferences and cached usage. Keep the portable launcher at a stable path if enabling startup. Normal Windows startup is silent after setup.
+To update an installed copy, quit Koodex and run the new NSIS installer. It replaces the previous installation and keeps your preferences; no manual uninstall is needed. Koodex does not currently download or install updates automatically. For a portable copy, quit the old launcher and replace it at the same path. Builds are unsigned unless electron-builder signing is configured. Uninstall preserves preferences and cached usage. Keep the portable launcher at a stable path if enabling startup. Normal Windows startup is silent after setup.
 
 The icon source is `assets/icons/koodex.svg`. `node scripts/icons.mjs` regenerates the PNG/ICO assets and tray icon variants from their matching geometry. `./scripts/installer-art.ps1` regenerates the small branded setup bitmaps; installer copy lives in `build/installer.nsh`. Branding does not replace code signing: unsigned builds may still show a Windows publisher warning.
 
@@ -124,8 +124,8 @@ npm run test:customization
 npm run test:placement
 npm run test:appearance
 npm run test:interactions
-npm run test:customization -- --exe=release/1.6.0/win-unpacked/Koodex.exe
-npm run test:resources -- --exe=release/1.6.0/win-unpacked/Koodex.exe --label=1.6.0
+npm run test:customization -- --exe=release/1.6.1/win-unpacked/Koodex.exe
+npm run test:resources -- --exe=release/1.6.1/win-unpacked/Koodex.exe --label=1.6.1
 npm run test:package
 ./scripts/check-installer.ps1
 npm run test:live

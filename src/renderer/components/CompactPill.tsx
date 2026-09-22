@@ -11,7 +11,12 @@ import { UsageRing } from "./UsageRing";
 import { UsageBar } from "./UsageBar";
 import { resetIn } from "../../shared/format";
 import { RefreshIcon } from "./Icons";
-import { hasGrip, isVertical, pillSize } from "../../shared/pill";
+import {
+  DOCK_TAB_WIDTH,
+  hasGrip,
+  isVertical,
+  pillSize,
+} from "../../shared/pill";
 import { orderedQuotas } from "../../shared/quotas";
 import { DualIndicator } from "./DualIndicator";
 export function CompactPill({
@@ -259,24 +264,61 @@ export function CompactPill({
       className="dock-tab"
       aria-label={expanded ? "Hide usage pill" : "Show usage pill"}
       aria-expanded={expanded}
+      aria-controls="dock-usage"
+      title={expanded ? "Hide usage" : "Show usage"}
       onClick={() => {
         setExpanded(!expanded);
         void window.Koodex.expandPill(!expanded);
       }}
     >
-      {(settings.pillPlacement === "left") !== expanded ? "›" : "‹"}
+      <svg
+        width="14"
+        height="14"
+        viewBox="0 0 16 16"
+        fill="none"
+        aria-hidden="true"
+        style={{
+          transform:
+            (settings.pillPlacement === "left") !== expanded
+              ? undefined
+              : "rotate(180deg)",
+        }}
+      >
+        <path
+          d="m6 4 4 4-4 4"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
     </button>
   );
   return (
     <div
       className={`pill-dock dock-${settings.pillPlacement}`}
-      style={{
-        width: pillSize(settings).width + 36,
-        height: pillSize(settings).height,
+      data-expanded={expanded}
+      data-material={settings.pillMaterial}
+      onKeyDown={(event) => {
+        if (event.key === "Escape" && expanded) {
+          setExpanded(false);
+          void window.Koodex.expandPill(false);
+          event.currentTarget
+            .querySelector<HTMLButtonElement>(".dock-tab")
+            ?.focus();
+        }
       }}
+      style={
+        {
+          "--dock-tab-width": `${DOCK_TAB_WIDTH}px`,
+          "--pill-opacity": settings.pillOpacity / 100,
+          width: pillSize(settings).width + DOCK_TAB_WIDTH,
+          height: pillSize(settings).height,
+        } as CSSProperties
+      }
     >
       {settings.pillPlacement === "right" && tab}
-      <div className="dock-content" inert={!expanded}>
+      <div id="dock-usage" className="dock-content" inert={!expanded}>
         {pill}
       </div>
       {settings.pillPlacement === "left" && tab}

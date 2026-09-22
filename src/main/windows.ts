@@ -9,7 +9,12 @@ import {
 import { join } from "node:path";
 import type { Settings } from "../shared/types";
 import { clampBounds, nearAnchor, snapBounds, type Rect } from "./positioning";
-import { pillSize, pinnedPosition, pinOffsetForDrag } from "../shared/pill";
+import {
+  DOCK_TAB_WIDTH,
+  pillSize,
+  pinnedPosition,
+  pinOffsetForDrag,
+} from "../shared/pill";
 
 export class Windows {
   popover?: BrowserWindow;
@@ -279,7 +284,7 @@ export class Windows {
     const settings = this.getSettings();
     const area = screen.getDisplayMatching(this.pill!.getBounds()).workArea;
     const size = pillSize(settings);
-    const width = expanded ? size.width + 36 : 36;
+    const width = expanded ? size.width + DOCK_TAB_WIDTH : DOCK_TAB_WIDTH;
     return clampBounds(
       {
         x:

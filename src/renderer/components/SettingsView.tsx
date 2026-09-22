@@ -36,7 +36,7 @@ export function SettingsView({
   const [tab, setTab] = useState("pill");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
-  const [claudeConfig, setClaudeConfig] = useState("");
+  const [claudeStatus, setClaudeStatus] = useState("");
   async function update(patch: Partial<Settings>) {
     pending.current++;
     setSettings((previous) => ({ ...previous, ...patch }));
@@ -50,7 +50,10 @@ export function SettingsView({
       setError(
         String(e).includes("packaged app")
           ? "Startup is available in the installed app."
-          : "Could not save. Please try again.",
+          : String(e).replace(
+              /^Error: (Error invoking remote method [^:]+: Error: )?/,
+              "",
+            ),
       );
     } finally {
       pending.current--;
@@ -547,7 +550,7 @@ export function SettingsView({
                   }
                 >
                   <option value="codex">Codex</option>
-                  <option value="claude">Claude Code (bridge)</option>
+                  <option value="claude">Claude Code</option>
                 </select>
               </label>
               <p className="preference-note">
@@ -583,35 +586,25 @@ export function SettingsView({
                     className="bridge-button"
                     onClick={async () => {
                       try {
-                        setClaudeConfig(
+                        setClaudeStatus(
                           await window.Koodex.prepareClaudeBridge(),
                         );
                         setError("");
                       } catch {
                         setError(
-                          "Could not prepare the Claude bridge. Please try again.",
+                          "Could not connect Claude Code. Check that its settings file is valid and writable.",
                         );
                       }
                     }}
                   >
-                    Prepare Claude bridge
+                    Reconnect Claude Code
                   </button>
-                  {claudeConfig && (
-                    <>
-                      <p className="preference-note">
-                        Merge this entry into ~/.claude/settings.json. It
-                        replaces your status line; keep a backup if you already
-                        have one. Koodex has not edited your Claude settings.
-                      </p>
-                      <textarea
-                        className="bridge-config"
-                        aria-label="Claude status-line configuration"
-                        readOnly
-                        value={claudeConfig}
-                        onFocus={(e) => e.target.select()}
-                      />
-                    </>
-                  )}
+                  <p className="preference-note" role="status">
+                    {state.provider === "claude" && state.syncState === "error"
+                      ? state.error
+                      : claudeStatus ||
+                        "Connected automatically. Any existing status line is preserved and settings are backed up before changes."}
+                  </p>
                   <p className="preference-note">
                     Only quota percentages and reset times are saved. Refresh
                     rereads the latest local report; it does not fetch a new
