@@ -1,0 +1,105 @@
+body:has(.usage-panel) {
+  overflow: hidden;
+}
+/* Provider rows share geometry with the native pill window. */
+.pill.pill-multi {
+  border-radius: 18px;
+  padding: 0;
+}
+.pill.pill-multi > .pill-content {
+  padding: 4px 8px !important;
+  display: flex;
+  min-height: 0;
+}
+.multi-provider-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  min-width: 0;
+}
+.provider-pill-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+.provider-pill-label {
+  flex: 0 0 46px;
+  font-size: 10px;
+  color: var(--text-secondary);
+  text-align: left;
+}
+.provider-pill-row > .pill[data-material] {
+  flex-shrink: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  opacity: 1;
+  border-radius: 10px;
+}
+.pill-vertical.pill-multi > .pill-content {
+  padding: 4px 0 !important;
+}
+.pill-vertical.pill-multi .provider-pill-row {
+  flex-direction: column;
+  gap: 4px;
+}
+.pill-vertical.pill-multi .provider-pill-label {
+  flex: 0 0 16px;
+  line-height: 16px;
+  text-align: center;
+}
+.pill-vertical.pill-multi > .drag-handle {
+  flex: 0 0 16px;
+  min-height: 16px;
+}
+.pill-vertical.pill-multi > .pill-refresh {
+  flex: 0 0 32px;
+  margin: 0;
+}
+.usage-panel {
+  max-height: 520px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+.provider-usage + .provider-usage {
+  border-top: 1px solid var(--border);
+  margin-top: 16px;
+  padding-top: 14px;
+}
+.provider-heading {
+  margin: 4px 0 8px;
+  font-weight: 600;
+}
+.connection-diagnostic {
+  margin-top: 12px;
+  padding: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.connection-diagnostic p {
+  margin-top: 6px;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+.connection-diagnostic button {
+  margin-top: 10px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.pace-estimate {
+  margin-top: 6px;
+  font-size: 10px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+.usage-panel .refresh {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}

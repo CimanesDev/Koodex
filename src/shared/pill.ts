@@ -3,7 +3,36 @@ export const DOCK_TAB_WIDTH = 32;
 export const isVertical = (settings: Settings) =>
   settings.pillPlacement === "left" || settings.pillPlacement === "right";
 export const hasGrip = (settings: Settings) => settings.pillShowDragHandle;
-export function pillSize(settings: Settings) {
+export function pillSize(settings: Settings): {
+  width: number;
+  height: number;
+} {
+  if (settings.monitorBoth) {
+    const vertical = isVertical(settings);
+    const inner = pillSize({
+      ...settings,
+      monitorBoth: false,
+      pillShowDragHandle: false,
+      pillShowRefresh: false,
+    });
+    return vertical
+      ? {
+          width: Math.max(72, inner.width),
+          height:
+            (inner.height + 20) * 2 +
+            12 +
+            (hasGrip(settings) ? 16 : 0) +
+            (settings.pillShowRefresh ? 32 : 0),
+        }
+      : {
+          width:
+            inner.width +
+            68 +
+            (hasGrip(settings) ? 20 : 0) +
+            (settings.pillShowRefresh ? 32 : 0),
+          height: (inner.height + 4) * 2 + 10,
+        };
+  }
   const both = settings.pillLayout === "both",
     minimal = settings.pillContent === "indicator",
     vertical = isVertical(settings),

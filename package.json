@@ -1,7 +1,7 @@
 {
   "name": "koodex",
   "productName": "Koodex",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "private": true,
   "description": "A quiet Codex usage companion for Windows",
   "author": "cimanesdev",
@@ -29,7 +29,8 @@
     "test:appearance": "node scripts/appearance.mjs",
     "test:ui-regressions": "node scripts/ui-regressions.mjs",
     "test:updater": "node scripts/check-updater.mjs",
-    "test:update-ui": "node scripts/update-ui.mjs"
+    "test:update-ui": "node scripts/update-ui.mjs",
+    "test:providers": "node scripts/providers.mjs"
   },
   "dependencies": {
     "electron-updater": "^6.8.9",

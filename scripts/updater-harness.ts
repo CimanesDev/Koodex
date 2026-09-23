@@ -49,7 +49,7 @@ async function checkPublishedFeed() {
     config,
     "provider: github\nowner: CimanesDev\nrepo: Koodex\nupdaterCacheDirName: feed-test\n",
   );
-  for (const currentVersion of [version, "1.6.1"]) {
+  for (const currentVersion of [version, "1.7.0", "1.6.1"]) {
     const adapter = {
       version: currentVersion,
       name: "Koodex Feed Test",

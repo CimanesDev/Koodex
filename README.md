@@ -27,7 +27,7 @@ Choose the `nsis.exe` installer (recommended) or the `portable.exe` standalone l
 
 ## Resource use in 1.4
 
-Settings and usage windows are created on demand and released one second after closing. Tray-only mode keeps no renderer windows; showing the pill uses one. Closing settings no longer leaves its renderer in memory. Manual-only pills avoid a periodic countdown timer when countdowns are off, and only opt-in automatic switching disables background throttling. Unchanged tray menus are reused, unchanged Codex cache writes are limited to once a minute, and Claude's file watcher runs only when Claude is selected. Live update intervals are unchanged.
+Settings and usage windows are created on demand and released one second after closing. Tray-only mode keeps no renderer windows; showing the pill uses one. Closing settings no longer leaves its renderer in memory. Manual-only pills avoid a periodic countdown timer when countdowns are off, and only opt-in automatic switching disables background throttling. Unchanged tray menus are reused, unchanged Codex cache writes are limited to once a minute, and Claude's file watcher runs only when Claude is selected or both providers are enabled. Live update intervals are unchanged.
 
 In an isolated Windows sample-data run, private memory fell from **299.1 to 90.2 MiB** at tray-only startup and from **303.8 to 161.9 MiB** with the pill visible. The installer fell from **112.6 to 102.9 MB**; unpacked size fell from **395.0 to 336.2 MB**. Results vary by device and session. The memory measurements exclude the separate Codex CLI child. See [measurement details](docs/performance.md).
 
@@ -43,8 +43,8 @@ In settings:
 
 - **Pill & appearance:** choose one or both limits, text or indicator-only, visual style cards (two bars, stacked bars, two rings, nested rings), accent, countdowns, quick refresh, switching behavior, opacity, Solid/Glass surfaces, and a usage meter/ring for the tray. Tray icon color follows the Windows taskbar theme; Light/Dark overrides are available.
 - **Placement:** drag anywhere on the pill, with or without its optional grip. A click still switches limits; moving at least five pixels starts a drag. Free placement snaps near the left/right edges and top center. Pins move along their edge. Returning to free placement restores the previous free position. Changing the pin preset resets its edge offset. Enable **Collapsible side tab** with left/right placement to reveal or hide the pill with an animated edge tab; it starts collapsed.
-- **Providers:** choose Codex or prepare the optional Claude Code bridge. One provider is displayed at a time.
-- **General:** configure startup, low-usage alerts, and background refresh frequency. Alerts fire once at 25%, 10%, and 0% remaining for each quota; a skipped threshold produces only the most urgent alert. Changing reset estimates does not repeat exhaustion alerts. Alerts rearm after the previous reset has passed and a fresh report confirms recovery.
+- **Providers:** choose Codex or prepare the optional Claude Code bridge. Enable **Show both providers** to keep both visible with independent updates and connection states. The selected **Tray provider** controls the tray icon and low-usage alerts.
+- **General:** configure startup, low-usage alerts, background refresh frequency, and an optional **Ctrl + Shift + K** or **Ctrl + Alt + K** shortcut to show or hide the pill. Shortcut conflicts are reported without replacing the working shortcut. Alerts fire once at 25%, 10%, and 0% remaining for each quota; a skipped threshold produces only the most urgent alert. Changing reset estimates does not repeat exhaustion alerts. Alerts rearm after the previous reset has passed and a fresh report confirms recovery.
 
 One-limit mode is **click-only by default**. Automatic cycling starts only if you choose an interval. Upgrading from 1.0/1.1 turns off the old implicit auto-switch once; subsequent explicit choices are preserved. Existing users keep their other preferences and skip the welcome screen.
 
@@ -100,10 +100,10 @@ npm run build
 npm run dist
 ```
 
-Version 1.7.0 outputs in `release/1.7.0/`:
+Version 1.8.0 outputs in `release/1.8.0/`:
 
-- `Koodex-1.7.0-x64-nsis.exe` - per-user installer, no administrator privileges required.
-- `Koodex-1.7.0-x64-portable.exe` - standalone launcher.
+- `Koodex-1.8.0-x64-nsis.exe` - per-user installer, no administrator privileges required.
+- `Koodex-1.8.0-x64-portable.exe` - standalone launcher.
 - `win-unpacked/Koodex.exe` - unpacked app (keep its adjacent files).
 
 To update an installed copy, quit Koodex and run the new NSIS installer. It replaces the previous installation and keeps your preferences; no manual uninstall is needed. Starting with 1.7.0, installed copies check GitHub shortly after launch and every six hours. Open **General > App updates** (or **App updates** in the tray menu), choose **Download update**, then **Restart and install**. Downloads are verified before installation. Nothing installs on ordinary quit or shutdown. Versions 1.6.1 and earlier need one manual installer update to gain this feature. Portable and unpacked copies use **View releases** instead. For a portable copy, quit the old launcher and replace it at the same path. Builds are unsigned unless electron-builder signing is configured. Uninstall preserves preferences and cached usage. Keep the portable launcher at a stable path if enabling startup. Normal Windows startup is silent after setup.
@@ -128,8 +128,9 @@ npm run test:customization
 npm run test:placement
 npm run test:appearance
 npm run test:interactions
-npm run test:customization -- --exe=release/1.7.0/win-unpacked/Koodex.exe
-npm run test:resources -- --exe=release/1.7.0/win-unpacked/Koodex.exe --label=1.7.0
+npm run test:providers
+npm run test:customization -- --exe=release/1.8.0/win-unpacked/Koodex.exe
+npm run test:resources -- --exe=release/1.8.0/win-unpacked/Koodex.exe --label=1.8.0
 npm run test:package
 npm run test:updater
 npm run test:update-ui
@@ -155,6 +156,8 @@ Renderers are sandboxed with context isolation, Node integration disabled, and a
 Koodex reads usage through your local Codex installation or the optional Claude quota-only bridge. Codex contacts its service using existing authentication. Koodex never asks for provider passwords, does not read or store authentication tokens, operates no remote backend, and includes no telemetry or advertising. Each provider's own configuration governs its behavior.
 
 Preferences, cached usage, and alert deduplication state are JSON files in Electron's user-data directory (`%APPDATA%/Koodex`). Mock mode uses `%APPDATA%/Koodex-mock`. Delete the directory while the app is closed to reset preferences and repeat setup.
+
+Usage details include connection diagnostics with retry or Claude reconnection actions. Fresh, consistent quota windows also show a labeled window-average estimate. This assumes steady usage since the window began; bursts, rolling limits, and reporting delays can change the outcome. Stale, unknown, expired, or very young windows show no estimate. No usage history is stored.
 
 ## Troubleshooting
 

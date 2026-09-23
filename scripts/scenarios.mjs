@@ -49,7 +49,7 @@ for (const scenario of [
     if (scenario === "offline")
       assert.ok(
         await page
-          .getByText("Unable to read Codex usage. Retrying automatically.")
+          .getByText("Showing saved usage")
           .count(),
       );
     if (scenario === "loading")

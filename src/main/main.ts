@@ -1,5 +1,6 @@
 import {
   app,
+  globalShortcut,
   ipcMain,
   Notification,
   shell,
@@ -8,6 +9,8 @@ import {
 import { join, dirname } from "node:path";
 import { watchFile, unwatchFile, existsSync } from "node:fs";
 import { claudeFile, connectClaude, readClaude } from "./claude";
+import { UsageMonitor } from "./UsageMonitor";
+import { PillShortcut } from "./shortcuts";
 import { Updates } from "./updates";
 import { Store, validateSettings } from "./settings";
 import { Windows } from "./windows";
@@ -30,7 +33,7 @@ const server = new CodexServer();
 let quitting = false;
 let windows: Windows | undefined;
 let tray: KoodexTray | undefined;
-let timer: NodeJS.Timeout | undefined;
+let stopMonitoring: (() => void) | undefined;
 let updates: Updates | undefined;
 if (!app.requestSingleInstanceLock()) {
   app.quit();
@@ -43,7 +46,8 @@ if (!app.requestSingleInstanceLock()) {
     if (quitting) return;
     e.preventDefault();
     quitting = true;
-    clearTimeout(timer);
+    stopMonitoring?.();
+    globalShortcut.unregisterAll();
     updates?.stop();
     unwatchFile(claudeFile(app.getPath("userData")));
     void server.stop().finally(() => {
@@ -55,10 +59,6 @@ if (!app.requestSingleInstanceLock()) {
   void app.whenReady().then(() => {
     const store = new Store(app.getPath("userData"));
     let settings = store.settings();
-    let state: Snapshot =
-      settings.provider === "claude"
-        ? readClaude(app.getPath("userData"))
-        : { provider: "codex", usage: store.cache(), syncState: "stale" };
     let claudeSetupError = "";
     function setupClaude() {
       try {
@@ -79,30 +79,15 @@ if (!app.requestSingleInstanceLock()) {
         throw error;
       }
     }
-    if (settings.provider === "claude") {
+    if (settings.provider === "claude" || settings.monitorBoth) {
       try {
         setupClaude();
       } catch {
         /* Report the actionable setup error through usage state. */
       }
     }
-    let busy = false;
-    let generation = 0;
-    let pendingRefresh = false;
-    let failures = 0;
     let cacheFingerprint = "";
     let cacheSavedAt = 0;
-    if (!state.usage) state.syncState = "connecting";
-    function alertFile() {
-      return settings.provider === "claude" ? "alerts-claude" : "alerts";
-    }
-    function loadLedger() {
-      const data = store.read<AlertLedger>(alertFile(), {});
-      return data && typeof data === "object" && !Array.isArray(data)
-        ? data
-        : {};
-    }
-    let ledger = loadLedger();
     const persist = (name: string, value: unknown) => {
       try {
         store.write(name, value);
@@ -110,94 +95,135 @@ if (!app.requestSingleInstanceLock()) {
         console.warn("Koodex could not persist " + name);
       }
     };
+    const ledgers: Record<Settings["provider"], AlertLedger> = {
+      codex: {},
+      claude: {},
+    };
+    for (const provider of ["codex", "claude"] as const) {
+      const saved = store.read<AlertLedger>(
+        provider === "claude" ? "alerts-claude" : "alerts",
+        {},
+      );
+      if (saved && typeof saved === "object" && !Array.isArray(saved))
+        ledgers[provider] = saved;
+    }
     persist("settings", settings);
+    const snapshot = (): Snapshot => ({
+      ...monitors[settings.provider].snapshot,
+      ...(settings.monitorBoth
+        ? {
+            companion:
+              monitors[settings.provider === "codex" ? "claude" : "codex"]
+                .snapshot,
+          }
+        : {}),
+    });
     const publish = () => {
       if (quitting) return;
+      const state = snapshot();
       windows?.broadcast("usage", state);
       tray?.render(state, settings, updates?.get());
     };
-    const schedule = () => {
-      clearTimeout(timer);
-      if (!quitting)
-        timer = setTimeout(
-          () => void refresh(),
-          failures
-            ? Math.min(300000, 5000 * 2 ** Math.min(failures - 1, 6))
-            : (settings.provider === "claude"
-                ? 10
-                : settings.refreshIntervalSeconds) * 1000,
-        );
-    };
-    async function refresh() {
-      if (busy || quitting) return;
-      const currentGeneration = generation;
-      const provider = settings.provider;
-      busy = true;
-      clearTimeout(timer);
-      state = {
-        ...state,
-        syncState: state.usage ? "refreshing" : "connecting",
-      };
-      publish();
-      try {
-        if (provider === "claude")
-          state = claudeSetupError
-            ? {
-                provider,
-                usage: null,
-                syncState: "error",
-                error: claudeSetupError,
-              }
-            : readClaude(app.getPath("userData"));
-        else if (mock) state = { ...mockSnapshot(mock), provider };
-        else {
-          const usage = adaptUsage(await server.read());
-          if (currentGeneration !== generation) return;
-          state = { provider, usage, syncState: "synced" };
-          const fingerprint = JSON.stringify({ ...usage, fetchedAt: 0 });
+    function changed(state: Snapshot) {
+      if (quitting) return;
+      const provider = state.provider!;
+      if (state.syncState === "synced" && state.usage) {
+        if (provider === "codex" && !mock) {
+          const fingerprint = JSON.stringify({ ...state.usage, fetchedAt: 0 });
           if (
             fingerprint !== cacheFingerprint ||
             Date.now() - cacheSavedAt >= 60000
           ) {
-            persist("usage", { usage, fetchedAt: usage.fetchedAt });
+            persist("usage", {
+              usage: state.usage,
+              fetchedAt: state.usage.fetchedAt,
+            });
             cacheFingerprint = fingerprint;
             cacheSavedAt = Date.now();
           }
         }
+        // Existing alerts continue to follow the selected tray provider.
         if (
           !mock &&
-          state.syncState === "synced" &&
-          state.usage &&
+          provider === settings.provider &&
           settings.notificationsEnabled &&
           Notification.isSupported()
         ) {
-          const previousLedger = JSON.stringify(ledger);
+          const ledger = ledgers[provider];
+          const before = JSON.stringify(ledger);
           for (const a of collectAlerts(state.usage, ledger))
             new Notification({
               title: "Koodex",
               body: `Your ${a.label} ${provider === "claude" ? "Claude Code" : "Codex"} limit has ${Math.round(a.remaining)}% remaining. Resets in ${resetIn(a.resetsAt)}.`,
             }).show();
-          if (JSON.stringify(ledger) !== previousLedger)
-            persist(alertFile(), ledger);
+          if (JSON.stringify(ledger) !== before)
+            persist(provider === "claude" ? "alerts-claude" : "alerts", ledger);
         }
-        failures = 0;
-      } catch (error) {
-        if (currentGeneration !== generation) return;
-        failures++;
-        state = {
-          ...state,
-          syncState: state.usage ? "stale" : "error",
-          error: explainError(error),
-        };
-        await server.stop();
-      } finally {
-        busy = false;
-        publish();
-        if (pendingRefresh) {
-          pendingRefresh = false;
-          void refresh();
-        } else schedule();
       }
+      publish();
+    }
+    const monitors = {
+      codex: new UsageMonitor(
+        { provider: "codex", usage: store.cache(), syncState: "stale" },
+        async () =>
+          mock
+            ? { ...mockSnapshot(mock), provider: "codex" }
+            : {
+                provider: "codex",
+                usage: adaptUsage(await server.read()),
+                syncState: "synced",
+              },
+        changed,
+        () => settings.refreshIntervalSeconds * 1000,
+        async (error) => {
+          await server.stop();
+          return explainError(error);
+        },
+      ),
+      claude: new UsageMonitor(
+        readClaude(app.getPath("userData")),
+        () =>
+          claudeSetupError
+            ? {
+                provider: "claude",
+                usage: null,
+                syncState: "error",
+                error: claudeSetupError,
+              }
+            : readClaude(app.getPath("userData")),
+        changed,
+        () => 10000,
+        async () =>
+          "Could not read the local Claude report. Reconnect Claude Code and try again.",
+      ),
+    };
+    stopMonitoring = () => {
+      monitors.codex.setActive(false);
+      monitors.claude.setActive(false);
+    };
+    const refresh = async () => {
+      await Promise.all([monitors.codex.refresh(), monitors.claude.refresh()]);
+    };
+    const shortcut = new PillShortcut(globalShortcut, () => {
+      try {
+        update({ floatingPillEnabled: !settings.floatingPillEnabled });
+      } catch {
+        /* A failed settings write leaves the previous visibility intact. */
+      }
+    });
+    try {
+      shortcut.set(settings.pillShortcut);
+    } catch {
+      /* Shown in General settings. */
+    }
+    function syncMonitors() {
+      const codexActive = settings.monitorBoth || settings.provider === "codex";
+      monitors.codex.setActive(codexActive);
+      monitors.claude.setActive(
+        settings.monitorBoth || settings.provider === "claude",
+      );
+      if (!codexActive) void server.stop();
+      syncClaudeWatcher();
     }
     function update(patch: Partial<Settings>) {
       const clean = validateSettings(patch);
@@ -209,33 +235,35 @@ if (!app.requestSingleInstanceLock()) {
         clean.pillPlacement !== settings.pillPlacement
       )
         next.pillPinOffset = null;
-      if (next.provider === "claude" && next.provider !== settings.provider)
-        setupClaude();
-      store.write("settings", next);
-      const providerChanged = next.provider !== settings.provider;
-      settings = next;
-      if (providerChanged) {
-        syncClaudeWatcher();
-        ledger = loadLedger();
-        generation++;
-        failures = 0;
-        state =
-          settings.provider === "claude"
-            ? readClaude(app.getPath("userData"))
-            : {
-                provider: "codex",
-                usage: store.cache(),
-                syncState: "connecting",
-              };
-        publish();
-        if (settings.provider === "claude") void server.stop();
-        if (busy) pendingRefresh = true;
-        else void refresh();
+      if (
+        (next.provider === "claude" || next.monitorBoth) &&
+        !(settings.provider === "claude" || settings.monitorBoth)
+      ) {
+        try {
+          setupClaude();
+        } catch {
+          /* Keep the other provider usable; show recovery guidance. */
+        }
       }
+      const previousShortcut = settings.pillShortcut;
+      if (clean.pillShortcut !== undefined) shortcut.set(next.pillShortcut);
+      try {
+        store.write("settings", next);
+      } catch (error) {
+        if (clean.pillShortcut !== undefined) shortcut.set(previousShortcut);
+        throw error;
+      }
+      const monitoringChanged =
+        next.provider !== settings.provider ||
+        next.monitorBoth !== settings.monitorBoth;
+      settings = next;
+      if (monitoringChanged) syncMonitors();
+      publish();
       windows?.broadcast("settings", settings);
       windows?.syncPill();
-      tray?.render(state, settings, updates?.get());
-      if (!busy) schedule();
+      tray?.render(snapshot(), settings, updates?.get());
+      monitors.codex.reschedule();
+      monitors.claude.reschedule();
       return settings;
     }
     windows = new Windows(
@@ -266,7 +294,7 @@ if (!app.requestSingleInstanceLock()) {
       },
       (updateState) => {
         windows?.broadcast("updates", updateState);
-        tray?.render(state, settings, updateState);
+        tray?.render(snapshot(), settings, updateState);
       },
       disabledUpdates,
     );
@@ -292,7 +320,8 @@ if (!app.requestSingleInstanceLock()) {
         "https://github.com/CimanesDev/Koodex/releases/latest",
       ),
     );
-    handle("usage:get", () => state);
+    handle("usage:get", snapshot);
+    handle("shortcut:error", () => shortcut.error);
     ipcMain.handle("pill:drag", (event, phase) => {
       if (
         event.sender === windows?.pill?.webContents &&
@@ -325,7 +354,7 @@ if (!app.requestSingleInstanceLock()) {
       windows!.broadcast("settings", settings);
       windows!.syncPill();
       windows!.closeSettings();
-      tray!.render(state, settings, updates?.get());
+      tray!.render(snapshot(), settings, updates?.get());
     });
     handle("popover:open", () => windows!.open());
     handle("popover:hide", () => windows!.hidePopover());
@@ -334,37 +363,24 @@ if (!app.requestSingleInstanceLock()) {
       if (typeof h === "number" && Number.isFinite(h)) windows!.resize(h);
     });
     server.on("updated", () => {
-      if (settings.provider === "codex" && !busy) void refresh();
+      void monitors.codex.refresh();
     });
     server.on("disconnect", () => {
-      if (quitting || settings.provider !== "codex") return;
-      state = { ...state, syncState: state.usage ? "stale" : "offline" };
-      publish();
-      if (!busy) {
-        failures++;
-        schedule();
-      }
+      if (!quitting) monitors.codex.disconnect();
     });
     function syncClaudeWatcher() {
       unwatchFile(claudeFile(app.getPath("userData")));
-      if (settings.provider !== "claude") return;
+      if (!(settings.monitorBoth || settings.provider === "claude")) return;
       watchFile(
         claudeFile(app.getPath("userData")),
         { interval: 500, persistent: false },
         (current, previous) => {
-          if (
-            quitting ||
-            settings.provider !== "claude" ||
-            current.mtimeMs === previous.mtimeMs
-          )
-            return;
-          if (busy) pendingRefresh = true;
-          else void refresh();
+          if (!quitting && current.mtimeMs !== previous.mtimeMs)
+            void monitors.claude.refresh();
         },
       );
     }
-    syncClaudeWatcher();
-    void refresh();
+    syncMonitors();
     windows.syncPill();
     if (!settings.setupCompleted && !process.argv.includes("--startup"))
       windows.openSettings();

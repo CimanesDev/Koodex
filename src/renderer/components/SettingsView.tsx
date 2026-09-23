@@ -49,6 +49,10 @@ export function SettingsView({
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [claudeStatus, setClaudeStatus] = useState("");
+  const [shortcutError, setShortcutError] = useState("");
+  useEffect(() => {
+    void window.Koodex.getShortcutError().then(setShortcutError);
+  }, [incomingSettings.pillShortcut]);
   async function update(patch: Partial<Settings>) {
     pending.current++;
     setSettings((previous) => ({ ...previous, ...patch }));
@@ -70,6 +74,8 @@ export function SettingsView({
     } finally {
       pending.current--;
       setSaving(pending.current > 0);
+      if (patch.pillShortcut !== undefined)
+        void window.Koodex.getShortcutError().then(setShortcutError);
     }
   }
   async function done() {
@@ -82,6 +88,7 @@ export function SettingsView({
   }
   function toggle(
     key:
+      | "monitorBoth"
       | "floatingPillEnabled"
       | "showRefreshActivity"
       | "pillShowReset"
@@ -111,6 +118,7 @@ export function SettingsView({
       </label>
     );
   }
+  const claudeState = state.provider === "claude" ? state : state.companion;
   const size = pillSize(settings);
   const previewScale = Math.min(1, 100 / size.height);
   return (
@@ -139,7 +147,12 @@ export function SettingsView({
         <div className="preview-caption">
           <span>YOUR FLOATING PILL</span>
           <span>
-            {settings.provider === "claude" ? "Claude Code" : "Codex"} ·{" "}
+            {settings.monitorBoth
+              ? "Codex + Claude Code"
+              : settings.provider === "claude"
+                ? "Claude Code"
+                : "Codex"}{" "}
+            ·{" "}
             {state.syncState === "synced"
               ? "Live usage"
               : state.usage
@@ -550,8 +563,15 @@ export function SettingsView({
           <div className="preferences-grid">
             <section>
               <h2>Your usage source</h2>
+              {toggle(
+                "monitorBoth",
+                "Show both providers",
+                "Keep Codex and Claude Code visible together in the pill and usage details.",
+              )}
               <label className="select-row">
-                <span>Provider</span>
+                <span>
+                  {settings.monitorBoth ? "Tray provider" : "Provider"}
+                </span>
                 <select
                   aria-label="Provider"
                   value={settings.provider}
@@ -566,8 +586,9 @@ export function SettingsView({
                 </select>
               </label>
               <p className="preference-note">
-                One provider at a time. Your tray, pill and usage details follow
-                this choice.
+                {settings.monitorBoth
+                  ? "The tray icon and existing alerts follow this choice. Both providers keep updating independently."
+                  : "Your tray, pill and usage details follow this choice."}
               </p>
               <h2 className="section-gap">Cursor & other providers</h2>
               <p className="preference-note">
@@ -577,11 +598,11 @@ export function SettingsView({
             </section>
             <section>
               <h2>
-                {settings.provider === "codex"
+                {settings.provider === "codex" && !settings.monitorBoth
                   ? "Codex"
                   : "Connect Claude Code"}
               </h2>
-              {settings.provider === "codex" ? (
+              {settings.provider === "codex" && !settings.monitorBoth ? (
                 <p className="preference-note">
                   Uses your signed-in Codex CLI. Usage events update
                   immediately; background checks follow your General refresh
@@ -612,8 +633,8 @@ export function SettingsView({
                     Reconnect Claude Code
                   </button>
                   <p className="preference-note" role="status">
-                    {state.provider === "claude" && state.syncState === "error"
-                      ? state.error
+                    {claudeState?.syncState === "error"
+                      ? claudeState.error
                       : claudeStatus ||
                         "Connected automatically. Any existing status line is preserved and settings are backed up before changes."}
                   </p>
@@ -632,6 +653,33 @@ export function SettingsView({
             <UpdatePanel />
             <section>
               <h2>Quiet by default</h2>
+              <label className="select-row">
+                <span>Toggle pill shortcut</span>
+                <select
+                  aria-label="Toggle pill shortcut"
+                  value={settings.pillShortcut}
+                  onChange={(event) =>
+                    void update({
+                      pillShortcut: event.target
+                        .value as Settings["pillShortcut"],
+                    })
+                  }
+                >
+                  <option value="off">Off</option>
+                  <option value="CommandOrControl+Shift+K">
+                    Ctrl + Shift + K
+                  </option>
+                  <option value="CommandOrControl+Alt+K">Ctrl + Alt + K</option>
+                </select>
+              </label>
+              <p className="preference-note">
+                Show or hide the pill from any app. Your choice is saved.
+              </p>
+              {shortcutError && (
+                <p className="save-error" role="alert">
+                  {shortcutError}
+                </p>
+              )}
               {toggle(
                 "launchAtStartup",
                 "Launch at startup",
@@ -678,9 +726,11 @@ export function SettingsView({
                 <BrandMark />
                 <p>
                   Uses your local{" "}
-                  {settings.provider === "claude"
-                    ? "Claude Code bridge"
-                    : "Codex"}
+                  {settings.monitorBoth
+                    ? "Codex and Claude Code bridge"
+                    : settings.provider === "claude"
+                      ? "Claude Code bridge"
+                      : "Codex"}
                   .
                   <br />
                   No Koodex account. No telemetry.

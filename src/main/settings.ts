@@ -11,6 +11,12 @@ export function validateSettings(value: unknown): Partial<Settings> {
   if (!value || typeof value !== "object") return {};
   const v = value as Record<string, unknown>;
   const out: Partial<Settings> = {};
+  if (
+    ["off", "CommandOrControl+Shift+K", "CommandOrControl+Alt+K"].includes(
+      v.pillShortcut as string,
+    )
+  )
+    out.pillShortcut = v.pillShortcut as Settings["pillShortcut"];
   if (["auto", "light", "dark"].includes(v.trayColor as string))
     out.trayColor = v.trayColor as Settings["trayColor"];
   if (v.pillMaterial === "solid" || v.pillMaterial === "glass")
@@ -63,6 +69,7 @@ export function validateSettings(value: unknown): Partial<Settings> {
   )
     out.accentColor = v.accentColor as Settings["accentColor"];
   for (const key of [
+    "monitorBoth",
     "launchAtStartup",
     "notificationsEnabled",
     "floatingPillEnabled",

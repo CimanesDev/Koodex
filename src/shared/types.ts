@@ -19,8 +19,11 @@ export interface Snapshot {
   usage: CodexUsage | null;
   syncState: SyncState;
   error?: string;
+  companion?: Snapshot;
 }
 export interface Settings {
+  monitorBoth: boolean;
+  pillShortcut: "off" | "CommandOrControl+Shift+K" | "CommandOrControl+Alt+K";
   provider: "codex" | "claude";
   launchAtStartup: boolean;
   notificationsEnabled: boolean;
@@ -49,6 +52,8 @@ export interface Settings {
   pillPosition?: { x: number; y: number };
 }
 export const defaults: Settings = {
+  monitorBoth: false,
+  pillShortcut: "off",
   provider: "codex",
   launchAtStartup: false,
   notificationsEnabled: false,
@@ -93,6 +98,7 @@ export interface UpdateState {
   failedAction?: "check" | "download" | "install";
 }
 export interface Bridge {
+  getShortcutError(): Promise<string>;
   getUpdateState(): Promise<UpdateState>;
   checkForUpdates(): Promise<UpdateState>;
   downloadUpdate(): Promise<UpdateState>;

@@ -6,6 +6,7 @@ function subscribe<T>(channel: string, cb: (data: T) => void) {
   return () => ipcRenderer.removeListener(channel, listener);
 }
 const bridge: Bridge = {
+  getShortcutError: () => ipcRenderer.invoke("shortcut:error"),
   getUpdateState: () => ipcRenderer.invoke("updates:get"),
   checkForUpdates: () => ipcRenderer.invoke("updates:check"),
   downloadUpdate: () => ipcRenderer.invoke("updates:download"),
