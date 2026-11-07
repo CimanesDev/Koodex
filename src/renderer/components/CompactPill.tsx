@@ -25,64 +25,158 @@ import {
 import { orderedQuotas } from "../../shared/quotas";
 import { DualIndicator } from "./DualIndicator";
 import { ProviderLogo } from "./ProviderLogo";
-import { tone } from "../../shared/format";
 
-const isFiveHour = (w: UsageWindow) => w.id === "five-hour" || w.windowMinutes === 300;
-const isWeekly = (w: UsageWindow) => w.id === "weekly" || w.windowMinutes === 10080;
-const pct = (w: UsageWindow) =>
-  w.remainingPercent === null ? "—" : `${Math.round(w.remainingPercent)}%`;
+const describe = (w: UsageWindow, now: number) =>
+  `${w.label}: ${w.remainingPercent === null ? "Unavailable" : `${Math.round(w.remainingPercent)}% left`}${w.resetsAt ? ` · Resets in ${resetIn(w.resetsAt, now)}` : ""}`;
 
-/** One provider inside the "Both" pill: logo, both-limits indicator, short values. */
-function ProviderSegment({
+/**
+ * One provider's usage, exactly as configured (limits, style, text, countdowns).
+ * The pill shows one of these, or one row per provider in "Both".
+ */
+function PillBody({
   state,
   settings,
   now,
+  paused,
+  logo,
 }: {
   state: Snapshot;
   settings: Settings;
   now: number;
+  paused: boolean;
+  logo: boolean;
 }) {
-  const name = providerName(state.provider);
-  const quotas = orderedQuotas(state.usage?.windows ?? []).filter(
-    (w) => isFiveHour(w) || isWeekly(w),
-  );
+  const both = settings.pillLayout === "both";
+  const combined = both && settings.pillBothStyle === "combined";
   const minimal = settings.pillContent === "indicator";
-  const fresh = state.syncState === "synced" || state.syncState === "refreshing";
-  const detail = quotas.length
-    ? quotas
-        .map(
-          (w) =>
-            `${w.label}: ${w.remainingPercent === null ? "Unavailable" : `${Math.round(w.remainingPercent)}% left`}${w.resetsAt ? ` · Resets in ${resetIn(w.resetsAt, now)}` : ""}`,
-        )
-        .join("\n")
-    : state.syncState === "connecting"
-      ? "Connecting…"
-      : state.error || "Unavailable";
-  return (
-    <div
-      className={`provider-segment ${fresh ? "" : "segment-stale"}`}
-      title={`${name}\n${detail}`}
-      aria-label={`${name}: ${quotas.map((w) => `${w.label} ${pct(w)} remaining`).join(", ") || "unavailable"}`}
-    >
-      <ProviderLogo provider={state.provider} size={14} />
-      {quotas.length ? (
-        <DualIndicator windows={quotas} style={settings.pillIndicator} />
-      ) : (
-        <span className="segment-empty">{state.syncState === "connecting" ? "…" : "—"}</span>
-      )}
-      {!minimal && (
-        <div className="segment-values">
-          {quotas.map((w) => (
-            <span key={w.id} className={tone(w.remainingPercent)}>
-              <small>{isFiveHour(w) ? "5h" : "wk"}</small>
-              {pct(w)}
+  const vertical = isVertical(settings);
+  const provider = providerName(state.provider ?? settings.provider);
+  const { quota, next } = useAlternatingMetric(
+    state.usage?.windows ?? [],
+    settings.pillSwitchSeconds * 1000,
+    paused || both,
+  );
+  const quotas = both
+    ? orderedQuotas(state.usage?.windows ?? [])
+    : quota
+      ? [quota]
+      : [];
+  const canSwitch = !both && (state.usage?.windows.length ?? 0) > 1;
+  function metric(w: UsageWindow) {
+    return (
+      <div
+        className="pill-quota"
+        key={w.id}
+        title={describe(w, now)}
+        aria-label={`${w.label}: ${w.remainingPercent === null ? "Unavailable" : `${Math.round(w.remainingPercent)}% remaining`}`}
+      >
+        {!combined && settings.pillIndicator === "ring" && (
+          <UsageRing value={w.remainingPercent} />
+        )}
+        <div className="pill-metric">
+          {!minimal && (
+            <span className="metric" key={w.id}>
+              {w.id === "five-hour" ? "5h" : w.label} ·{" "}
+              {w.remainingPercent === null
+                ? "—"
+                : `${Math.round(w.remainingPercent)}%${both ? "" : " left"}`}
             </span>
-          ))}
+          )}
+          {!combined && settings.pillIndicator === "bar" && (
+            <UsageBar label={w.label} value={w.remainingPercent} />
+          )}
+          {!minimal && settings.pillShowReset && (
+            <span
+              className="pill-reset"
+              title={
+                w.resetsAt ? new Date(w.resetsAt).toLocaleString() : undefined
+              }
+            >
+              {w.resetsAt === null
+                ? "Reset unavailable"
+                : w.resetsAt <= now
+                  ? "Reset due"
+                  : `Resets in ${resetIn(w.resetsAt, now)}`}
+            </span>
+          )}
         </div>
+      </div>
+    );
+  }
+  const body = (
+    <>
+      {logo && (
+        <span className="provider-badge" title={provider}>
+          <ProviderLogo provider={state.provider ?? settings.provider} size={15} />
+        </span>
       )}
+      {quotas.length ? (
+        combined ? (
+          <div
+            className="combined-quota"
+            title={quotas.map((w) => describe(w, now)).join("\n")}
+          >
+            <DualIndicator
+              windows={quotas}
+              style={settings.pillIndicator}
+              vertical={vertical}
+            />
+            {!minimal && (
+              <div className="combined-labels">{quotas.map(metric)}</div>
+            )}
+          </div>
+        ) : (
+          quotas.map(metric)
+        )
+      ) : (
+        <span
+          className={minimal ? "minimal-empty" : "metric"}
+          title={
+            state.syncState === "connecting"
+              ? `Connecting to ${provider}`
+              : state.error || `${provider} unavailable`
+          }
+        >
+          {state.syncState === "connecting"
+            ? minimal
+              ? "…"
+              : "Connecting…"
+            : minimal
+              ? "—"
+              : `${provider} unavailable`}
+        </span>
+      )}
+      {state.syncState !== "synced" &&
+        (state.syncState !== "refreshing" || settings.showRefreshActivity) && (
+          <span
+            className={
+              state.syncState === "refreshing"
+                ? "pill-stale pill-refreshing"
+                : "pill-stale"
+            }
+            title={state.syncState}
+          >
+            ○
+          </span>
+        )}
+    </>
+  );
+  return canSwitch ? (
+    <button
+      className="pill-content"
+      onClick={next}
+      aria-label={`Switch ${provider} usage limit`}
+      title={`${provider} · click to switch · right-click for more`}
+    >
+      {body}
+    </button>
+  ) : (
+    <div className="pill-content" title={`${provider} · right-click for more`}>
+      {body}
     </div>
   );
 }
+
 export function CompactPill({
   state,
   paused,
@@ -101,8 +195,7 @@ export function CompactPill({
   refresh?: () => Promise<void>;
 }) {
   const bothProviders = settings.showBothProviders;
-  const both = settings.pillLayout === "both" && !bothProviders;
-  const provider = providerName(state.provider ?? settings.provider);
+  const both = settings.pillLayout === "both";
   const minimal = settings.pillContent === "indicator";
   const vertical = isVertical(settings);
   const docked = !preview && vertical && settings.pillSideHideable;
@@ -151,138 +244,13 @@ export function CompactPill({
       event.currentTarget.releasePointerCapture(event.pointerId);
   }
   const combined = both && settings.pillBothStyle === "combined";
-  const { quota, next } = useAlternatingMetric(
-    state.usage?.windows ?? [],
-    settings.pillSwitchSeconds * 1000,
-    paused || both,
+  const rows = bothProviders
+    ? (shown?.length ? shown : [state]).slice(0, 2)
+    : [state];
+  const busy = rows.every(
+    (s) => s.syncState === "refreshing" || s.syncState === "connecting",
   );
-  const quotas = both
-    ? orderedQuotas(state.usage?.windows ?? [])
-    : quota
-      ? [quota]
-      : [];
-  const canSwitch =
-    !both && !bothProviders && (state.usage?.windows.length ?? 0) > 1;
-  function metric(w: UsageWindow) {
-    return (
-      <div
-        className="pill-quota"
-        key={w.id}
-        title={`${w.label}: ${w.remainingPercent === null ? "Unavailable" : `${Math.round(w.remainingPercent)}% left`}${w.resetsAt ? ` · Resets in ${resetIn(w.resetsAt, now)}` : ""}`}
-        aria-label={`${w.label}: ${w.remainingPercent === null ? "Unavailable" : `${Math.round(w.remainingPercent)}% remaining`}`}
-      >
-        {!combined && settings.pillIndicator === "ring" && (
-          <UsageRing value={w.remainingPercent} />
-        )}
-        <div className="pill-metric">
-          {!minimal && (
-            <span className="metric" key={w.id}>
-              {w.id === "five-hour" ? "5h" : w.label} ·{" "}
-              {w.remainingPercent === null
-                ? "—"
-                : `${Math.round(w.remainingPercent)}%${both ? "" : " left"}`}
-            </span>
-          )}
-          {!combined && settings.pillIndicator === "bar" && (
-            <UsageBar label={w.label} value={w.remainingPercent} />
-          )}
-          {!minimal && settings.pillShowReset && (
-            <span
-              className="pill-reset"
-              title={
-                w.resetsAt ? new Date(w.resetsAt).toLocaleString() : undefined
-              }
-            >
-              {w.resetsAt === null
-                ? "Reset unavailable"
-                : w.resetsAt <= now
-                  ? "Reset due"
-                  : `Resets in ${resetIn(w.resetsAt, now)}`}
-            </span>
-          )}
-        </div>
-      </div>
-    );
-  }
-  const content = (
-    <>
-      {quotas.length ? (
-        combined ? (
-          <div
-            className="combined-quota"
-            title={quotas
-              .map(
-                (w) =>
-                  `${w.label}: ${w.remainingPercent === null ? "Unavailable" : `${Math.round(w.remainingPercent)}% left`}${w.resetsAt ? ` · Resets in ${resetIn(w.resetsAt, now)}` : ""}`,
-              )
-              .join("\n")}
-          >
-            <DualIndicator
-              windows={quotas}
-              style={settings.pillIndicator}
-              vertical={vertical}
-            />
-            {!minimal && (
-              <div className="combined-labels">{quotas.map(metric)}</div>
-            )}
-          </div>
-        ) : (
-          quotas.map(metric)
-        )
-      ) : (
-        <span
-          className={minimal ? "minimal-empty" : "metric"}
-          title={
-            state.syncState === "connecting"
-              ? `Connecting to ${provider}`
-              : `${provider} unavailable`
-          }
-        >
-          {state.syncState === "connecting"
-            ? minimal
-              ? "…"
-              : "Connecting…"
-            : minimal
-              ? "—"
-              : `${provider} unavailable`}
-        </span>
-      )}
-      {state.syncState !== "synced" &&
-        (state.syncState !== "refreshing" || settings.showRefreshActivity) && (
-          <span
-            className={
-              state.syncState === "refreshing"
-                ? "pill-stale pill-refreshing"
-                : "pill-stale"
-            }
-            title={state.syncState}
-          >
-            ○
-          </span>
-        )}
-    </>
-  );
-  const badge = settings.pillShowProvider && (
-    <span className="provider-badge" title={provider}>
-      <ProviderLogo provider={state.provider ?? settings.provider} size={14} />
-    </span>
-  );
-  const segments = (shown?.length ? shown : [state]).slice(0, 2);
-  const shownContent = bothProviders ? (
-    <div className="provider-segments">
-      {segments.map((s, i) => (
-        <span className="segment-wrap" key={s.provider}>
-          {i > 0 && <span className="segment-divider" aria-hidden="true" />}
-          <ProviderSegment state={s} settings={settings} now={now} />
-        </span>
-      ))}
-    </div>
-  ) : (
-    <>
-      {badge}
-      {content}
-    </>
-  );
+  const size = pillSize(settings);
   const pill = (
     <div
       onPointerDown={pointerDown}
@@ -303,8 +271,8 @@ export function CompactPill({
       data-material={settings.pillMaterial}
       style={
         {
-          width: preview ? pillSize(settings).width : undefined,
-          height: pillSize(settings).height,
+          width: preview ? size.width : undefined,
+          height: size.height,
           "--pill-opacity": settings.pillOpacity / 100,
         } as CSSProperties
       }
@@ -323,28 +291,30 @@ export function CompactPill({
           ⠿
         </div>
       )}
-      {canSwitch ? (
-        <button
-          className="pill-content"
-          onClick={next}
-          aria-label="Switch usage limit"
-          title={`${provider} · click to switch · right-click for more`}
-        >
-          {shownContent}
-        </button>
-      ) : (
-        <div className="pill-content" title={`${provider} · right-click for more`}>
-          {shownContent}
+      {bothProviders ? (
+        <div className="provider-rows">
+          {rows.map((s, i) => (
+            <div className="provider-row" key={s.provider}>
+              {i > 0 && <span className="provider-row-divider" aria-hidden="true" />}
+              <PillBody state={s} settings={settings} now={now} paused={paused} logo />
+            </div>
+          ))}
         </div>
+      ) : (
+        <PillBody
+          state={state}
+          settings={settings}
+          now={now}
+          paused={paused}
+          logo={settings.pillShowProvider}
+        />
       )}
       {settings.pillShowRefresh && (
         <button
           className="pill-refresh"
           aria-label={preview ? "Refresh live preview" : "Refresh usage"}
           title="Refresh usage now"
-          disabled={
-            state.syncState === "refreshing" || state.syncState === "connecting"
-          }
+          disabled={busy}
           onClick={() => void refresh()}
         >
           <RefreshIcon />
@@ -406,8 +376,8 @@ export function CompactPill({
         {
           "--dock-tab-width": `${DOCK_TAB_WIDTH}px`,
           "--pill-opacity": settings.pillOpacity / 100,
-          width: pillSize(settings).width + DOCK_TAB_WIDTH,
-          height: pillSize(settings).height,
+          width: size.width + DOCK_TAB_WIDTH,
+          height: size.height,
         } as CSSProperties
       }
     >

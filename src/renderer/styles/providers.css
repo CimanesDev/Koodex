@@ -215,102 +215,40 @@ code {
   background: var(--background);
 }
 
-/* Pill, "Both": two provider segments with a hairline divider. */
-.pill-providers .pill-content {
-  padding: 0 8px;
-  gap: 0;
-  justify-content: center;
-}
-.pill-providers.pill-no-grip .pill-content {
-  padding: 0 8px;
-}
-.provider-segments {
+/* Pill, "Both": one full row per provider, sharing grip and refresh. */
+.provider-rows {
   display: flex;
-  align-items: center;
-  width: 100%;
-  height: 100%;
-}
-.segment-wrap {
-  display: flex;
-  align-items: center;
+  flex-direction: column;
   flex: 1;
   min-width: 0;
   height: 100%;
+  padding: 2px 0;
 }
-.segment-divider {
+.provider-row {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+.provider-row > .pill-content {
+  flex: 1;
+  height: auto;
+  min-height: 0;
+}
+.provider-row-divider {
   flex: 0 0 1px;
-  align-self: center;
-  height: 22px;
-  margin: 0 6px;
+  margin: 0 12px 0 2px;
   background: var(--border);
 }
-.provider-segment {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  flex: 1;
-  min-width: 0;
-  transition: opacity 160ms ease-out;
+.pill-no-grip .provider-row-divider {
+  margin-left: 12px;
 }
-.provider-segment.segment-stale {
-  opacity: 0.55;
+.pill-vertical .provider-rows {
+  padding: 0;
 }
-.provider-segment .provider-logo-codex {
-  color: var(--text-primary);
+.pill-vertical .provider-row-divider {
+  margin: 2px 12px;
 }
-.provider-segment .dual-ring {
-  width: 28px;
-  height: 28px;
-}
-.provider-segment .dual-bars {
-  width: 44px;
-  min-width: 44px;
-  gap: 6px;
-}
-.segment-values {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  width: 36px;
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 1.25;
-  font-variant-numeric: tabular-nums;
-}
-.segment-values small {
-  margin-right: 3px;
-  font-size: 9.5px;
-  font-weight: 500;
-  color: var(--text-secondary);
-}
-.segment-empty {
-  width: 28px;
-  text-align: center;
-  color: var(--text-secondary);
-}
-.pill-vertical.pill-providers .pill-content {
-  padding: 8px 0;
-}
-.pill-vertical .provider-segments,
-.pill-vertical .segment-wrap {
-  flex-direction: column;
-}
-.pill-vertical .provider-segment {
-  flex-direction: column;
-  gap: 4px;
-}
-.pill-vertical .segment-divider {
-  flex: 0 0 1px;
-  width: 22px;
-  height: 1px;
-  margin: 6px 0;
-}
-.pill-vertical .provider-segment .dual-bars {
-  width: 28px;
-  min-width: 28px;
-}
-.pill-vertical .segment-values {
-  width: auto;
-  align-items: center;
+.pill-providers:not(.pill-vertical) .provider-badge {
+  margin-right: 0;
 }

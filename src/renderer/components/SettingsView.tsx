@@ -218,7 +218,7 @@ export function SettingsView({
         </div>
         <p>
           {settings.showBothProviders
-            ? "Codex and Claude Code side by side. Hover either for details."
+            ? "One row per provider, styled with your choices below."
             : settings.pillLayout === "both"
             ? settings.pillBothStyle === "combined"
               ? settings.pillIndicator === "ring"
@@ -252,15 +252,14 @@ export function SettingsView({
               <h2>What you see</h2>
               {settings.showBothProviders && (
                 <p className="preference-note">
-                  Showing Codex and Claude Code side by side, each with both
-                  limits. Contents, progress style and extras still apply.
+                  Showing Codex and Claude Code: each gets its own row, styled
+                  with everything below.
                 </p>
               )}
               <div
                 className="choice-grid"
                 role="group"
                 aria-label="Pill display"
-                hidden={settings.showBothProviders}
               >
                 {[
                   ["alternating", "One limit", "Click to switch"],
@@ -304,7 +303,7 @@ export function SettingsView({
                   Indicator only
                 </button>
               </div>
-              {settings.pillLayout === "alternating" && !settings.showBothProviders && (
+              {settings.pillLayout === "alternating" && (
                 <label className="select-row">
                   <span>Switch limits</span>
                   <select
@@ -647,9 +646,8 @@ export function SettingsView({
                     </select>
                   </label>
                   <p className="preference-note">
-                    The pill shows each provider with both limits (5-hour outer
-                    or top, weekly inner or bottom). Hover a provider for exact
-                    percentages and reset times. Alerts cover both.
+                    The pill stacks one row per provider, each styled with your
+                    Pill &amp; appearance choices. Alerts cover both.
                   </p>
                 </>
               ) : (
