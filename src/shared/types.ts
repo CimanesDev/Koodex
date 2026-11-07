@@ -26,6 +26,7 @@ export interface Snapshot {
 export interface Settings {
   pillShortcut: "off" | "CommandOrControl+Shift+K" | "CommandOrControl+Alt+K";
   provider: Provider;
+  showBothProviders: boolean;
   launchAtStartup: boolean;
   notificationsEnabled: boolean;
   refreshIntervalSeconds: 10 | 30 | 60 | 300;
@@ -56,6 +57,7 @@ export interface Settings {
 export const defaults: Settings = {
   pillShortcut: "off",
   provider: "codex",
+  showBothProviders: false,
   launchAtStartup: false,
   notificationsEnabled: false,
   refreshIntervalSeconds: 10,
@@ -112,6 +114,8 @@ export interface Bridge {
   showPillMenu(): Promise<void>;
   getUsage(): Promise<Snapshot>;
   getAllUsage(): Promise<Snapshot[]>;
+  getShownUsage(): Promise<Snapshot[]>;
+  onShownUsage(cb: (s: Snapshot[]) => void): () => void;
   refreshUsage(): Promise<void>;
   onUsageUpdated(cb: (s: Snapshot) => void): () => void;
   getSettings(): Promise<Settings>;

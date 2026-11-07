@@ -551,3 +551,7 @@ select {
     transition: none;
   }
 }
+
+[hidden] {
+  display: none !important;
+}

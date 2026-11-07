@@ -24,6 +24,65 @@ import {
 } from "../../shared/pill";
 import { orderedQuotas } from "../../shared/quotas";
 import { DualIndicator } from "./DualIndicator";
+import { ProviderLogo } from "./ProviderLogo";
+import { tone } from "../../shared/format";
+
+const isFiveHour = (w: UsageWindow) => w.id === "five-hour" || w.windowMinutes === 300;
+const isWeekly = (w: UsageWindow) => w.id === "weekly" || w.windowMinutes === 10080;
+const pct = (w: UsageWindow) =>
+  w.remainingPercent === null ? "—" : `${Math.round(w.remainingPercent)}%`;
+
+/** One provider inside the "Both" pill: logo, both-limits indicator, short values. */
+function ProviderSegment({
+  state,
+  settings,
+  now,
+}: {
+  state: Snapshot;
+  settings: Settings;
+  now: number;
+}) {
+  const name = providerName(state.provider);
+  const quotas = orderedQuotas(state.usage?.windows ?? []).filter(
+    (w) => isFiveHour(w) || isWeekly(w),
+  );
+  const minimal = settings.pillContent === "indicator";
+  const fresh = state.syncState === "synced" || state.syncState === "refreshing";
+  const detail = quotas.length
+    ? quotas
+        .map(
+          (w) =>
+            `${w.label}: ${w.remainingPercent === null ? "Unavailable" : `${Math.round(w.remainingPercent)}% left`}${w.resetsAt ? ` · Resets in ${resetIn(w.resetsAt, now)}` : ""}`,
+        )
+        .join("\n")
+    : state.syncState === "connecting"
+      ? "Connecting…"
+      : state.error || "Unavailable";
+  return (
+    <div
+      className={`provider-segment ${fresh ? "" : "segment-stale"}`}
+      title={`${name}\n${detail}`}
+      aria-label={`${name}: ${quotas.map((w) => `${w.label} ${pct(w)} remaining`).join(", ") || "unavailable"}`}
+    >
+      <ProviderLogo provider={state.provider} size={14} />
+      {quotas.length ? (
+        <DualIndicator windows={quotas} style={settings.pillIndicator} />
+      ) : (
+        <span className="segment-empty">{state.syncState === "connecting" ? "…" : "—"}</span>
+      )}
+      {!minimal && (
+        <div className="segment-values">
+          {quotas.map((w) => (
+            <span key={w.id} className={tone(w.remainingPercent)}>
+              <small>{isFiveHour(w) ? "5h" : "wk"}</small>
+              {pct(w)}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 export function CompactPill({
   state,
   paused,
@@ -31,7 +90,9 @@ export function CompactPill({
   now = Date.now(),
   preview = false,
   refresh = () => window.Koodex.refreshUsage(),
+  shown,
 }: {
+  shown?: Snapshot[];
   state: Snapshot;
   paused: boolean;
   settings: Settings;
@@ -39,7 +100,8 @@ export function CompactPill({
   preview?: boolean;
   refresh?: () => Promise<void>;
 }) {
-  const both = settings.pillLayout === "both";
+  const bothProviders = settings.showBothProviders;
+  const both = settings.pillLayout === "both" && !bothProviders;
   const provider = providerName(state.provider ?? settings.provider);
   const minimal = settings.pillContent === "indicator";
   const vertical = isVertical(settings);
@@ -99,7 +161,8 @@ export function CompactPill({
     : quota
       ? [quota]
       : [];
-  const canSwitch = !both && (state.usage?.windows.length ?? 0) > 1;
+  const canSwitch =
+    !both && !bothProviders && (state.usage?.windows.length ?? 0) > 1;
   function metric(w: UsageWindow) {
     return (
       <div
@@ -200,15 +263,21 @@ export function CompactPill({
     </>
   );
   const badge = settings.pillShowProvider && (
-    <span
-      className={`provider-badge provider-${state.provider ?? settings.provider}`}
-      aria-label={provider}
-      title={provider}
-    >
-      {(state.provider ?? settings.provider) === "claude" ? "C" : "X"}
+    <span className="provider-badge" title={provider}>
+      <ProviderLogo provider={state.provider ?? settings.provider} size={14} />
     </span>
   );
-  const shownContent = (
+  const segments = (shown?.length ? shown : [state]).slice(0, 2);
+  const shownContent = bothProviders ? (
+    <div className="provider-segments">
+      {segments.map((s, i) => (
+        <span className="segment-wrap" key={s.provider}>
+          {i > 0 && <span className="segment-divider" aria-hidden="true" />}
+          <ProviderSegment state={s} settings={settings} now={now} />
+        </span>
+      ))}
+    </div>
+  ) : (
     <>
       {badge}
       {content}
@@ -239,7 +308,7 @@ export function CompactPill({
           "--pill-opacity": settings.pillOpacity / 100,
         } as CSSProperties
       }
-      className={`pill ${both ? "pill-both" : ""} pill-${settings.pillIndicator} ${settings.pillShowReset && !minimal ? "pill-with-reset" : ""} ${preview ? "pill-preview" : ""} ${minimal ? "pill-minimal" : ""} ${vertical ? "pill-vertical" : ""} ${hasGrip(settings) ? "" : "pill-no-grip"} ${combined ? "pill-combined" : ""}`}
+      className={`pill ${bothProviders ? "pill-providers" : ""} ${both ? "pill-both" : ""} pill-${settings.pillIndicator} ${settings.pillShowReset && !minimal ? "pill-with-reset" : ""} ${preview ? "pill-preview" : ""} ${minimal ? "pill-minimal" : ""} ${vertical ? "pill-vertical" : ""} ${hasGrip(settings) ? "" : "pill-no-grip"} ${combined ? "pill-combined" : ""}`}
     >
       {hasGrip(settings) && (
         <div

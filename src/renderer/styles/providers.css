@@ -48,6 +48,9 @@ body:has(.usage-panel) {
   background: var(--surface);
 }
 .provider-switch button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   padding: 5px 12px;
   border-radius: 7px;
   font-size: 12px;
@@ -63,8 +66,21 @@ body:has(.usage-panel) {
   box-shadow: inset 0 0 0 1px var(--border);
 }
 .provider-switch-compact button {
-  padding: 4px 10px;
+  padding: 4px 9px;
+  gap: 5px;
   font-size: 11.5px;
+}
+.provider-switch .provider-logo-codex {
+  color: var(--text-secondary);
+}
+.provider-switch button[aria-checked="true"] .provider-logo-codex {
+  color: var(--text-primary);
+}
+.logo-pair {
+  display: inline-flex;
+}
+.logo-pair .provider-logo + .provider-logo {
+  margin-left: -3px;
 }
 .provider-switch button:focus-visible {
   outline: 1px solid var(--text-secondary);
@@ -75,7 +91,7 @@ body:has(.usage-panel) {
 }
 .provider-cards {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   gap: 8px;
   margin-bottom: 10px;
 }
@@ -90,18 +106,8 @@ body:has(.usage-panel) {
   display: grid;
   place-items: center;
   flex: 0 0 16px;
-  width: 16px;
-  height: 16px;
-  margin-right: 6px;
-  border-radius: 5px;
-  font-size: 9.5px;
-  font-weight: 700;
-  line-height: 1;
-  color: var(--background);
-  background: var(--text-secondary);
-}
-.provider-badge.provider-claude {
-  background: #d9a088;
+  margin-right: -2px;
+  color: var(--text-primary);
 }
 .pill-vertical .provider-badge {
   margin: 0 auto 2px;
@@ -128,4 +134,183 @@ code {
 }
 .provider-cards + .preference-note {
   margin-bottom: 14px;
+}
+
+.provider-logo {
+  flex-shrink: 0;
+  display: block;
+}
+.provider-card-logo {
+  display: flex;
+  gap: 2px;
+  height: 18px;
+  align-items: center;
+  margin-bottom: 6px;
+  color: var(--text-primary);
+}
+.provider-setup-heading {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+/* Popover, "Both": one compact card per provider. */
+.provider-cards-usage {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+.provider-card-usage {
+  padding: 12px 12px 10px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+.provider-card-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 0;
+  margin-bottom: 10px;
+}
+.provider-card-head h2 {
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.plan-chip {
+  padding: 1px 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 10px;
+  color: var(--text-secondary);
+}
+.sync.sync-compact {
+  margin: 0 0 0 auto;
+  font-size: 10.5px;
+}
+.quotas-compact {
+  gap: 10px;
+}
+.quota-compact .quota-heading {
+  margin-bottom: 5px;
+}
+.quota-compact h2 {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.quota-compact .percent {
+  font-size: 15px;
+  letter-spacing: -0.2px;
+}
+.quota-compact .percent small {
+  display: none;
+}
+.quota-compact .reset {
+  margin-top: 4px;
+  font-size: 10.5px;
+}
+.provider-card-usage .connection-diagnostic {
+  margin-top: 8px;
+  padding: 9px 10px;
+  background: var(--background);
+}
+
+/* Pill, "Both": two provider segments with a hairline divider. */
+.pill-providers .pill-content {
+  padding: 0 8px;
+  gap: 0;
+  justify-content: center;
+}
+.pill-providers.pill-no-grip .pill-content {
+  padding: 0 8px;
+}
+.provider-segments {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+}
+.segment-wrap {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+}
+.segment-divider {
+  flex: 0 0 1px;
+  align-self: center;
+  height: 22px;
+  margin: 0 6px;
+  background: var(--border);
+}
+.provider-segment {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  transition: opacity 160ms ease-out;
+}
+.provider-segment.segment-stale {
+  opacity: 0.55;
+}
+.provider-segment .provider-logo-codex {
+  color: var(--text-primary);
+}
+.provider-segment .dual-ring {
+  width: 28px;
+  height: 28px;
+}
+.provider-segment .dual-bars {
+  width: 44px;
+  min-width: 44px;
+  gap: 6px;
+}
+.segment-values {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  width: 36px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.25;
+  font-variant-numeric: tabular-nums;
+}
+.segment-values small {
+  margin-right: 3px;
+  font-size: 9.5px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+.segment-empty {
+  width: 28px;
+  text-align: center;
+  color: var(--text-secondary);
+}
+.pill-vertical.pill-providers .pill-content {
+  padding: 8px 0;
+}
+.pill-vertical .provider-segments,
+.pill-vertical .segment-wrap {
+  flex-direction: column;
+}
+.pill-vertical .provider-segment {
+  flex-direction: column;
+  gap: 4px;
+}
+.pill-vertical .segment-divider {
+  flex: 0 0 1px;
+  width: 22px;
+  height: 1px;
+  margin: 6px 0;
+}
+.pill-vertical .provider-segment .dual-bars {
+  width: 28px;
+  min-width: 28px;
+}
+.pill-vertical .segment-values {
+  width: auto;
+  align-items: center;
 }

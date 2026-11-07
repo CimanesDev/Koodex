@@ -6,14 +6,16 @@ export function UsageWindow({
   quota,
   now,
   state,
+  compact = false,
 }: {
   quota: Quota;
   now: number;
   state?: Snapshot;
+  compact?: boolean;
 }) {
-  const pace = state ? paceEstimate(quota, state, now) : null;
+  const pace = state && !compact ? paceEstimate(quota, state, now) : null;
   return (
-    <section className="quota">
+    <section className={`quota ${compact ? "quota-compact" : ""}`}>
       <div className="quota-heading">
         <h2>{quota.label}</h2>
         <div className={`percent ${tone(quota.remainingPercent)}`}>

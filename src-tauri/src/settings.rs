@@ -17,6 +17,7 @@ pub struct Point {
 pub struct Settings {
     pub pill_shortcut: String,
     pub provider: String,
+    pub show_both_providers: bool,
     pub launch_at_startup: bool,
     pub notifications_enabled: bool,
     pub refresh_interval_seconds: u32,
@@ -50,6 +51,7 @@ impl Default for Settings {
         Settings {
             pill_shortcut: "off".into(),
             provider: "codex".into(),
+            show_both_providers: false,
             launch_at_startup: false,
             notifications_enabled: false,
             refresh_interval_seconds: 10,
@@ -109,6 +111,7 @@ impl Settings {
                 "pillShowReset" => set(&mut self.pill_show_reset, v.as_bool()),
                 "pillShowRefresh" => set(&mut self.pill_show_refresh, v.as_bool()),
                 "pillShowProvider" => set(&mut self.pill_show_provider, v.as_bool()),
+                "showBothProviders" => set(&mut self.show_both_providers, v.as_bool()),
                 "showRefreshActivity" => set(&mut self.show_refresh_activity, v.as_bool()),
                 "refreshIntervalSeconds" => set(&mut self.refresh_interval_seconds, v.as_u64().filter(|n| [10, 30, 60, 300].contains(n)).map(|n| n as u32)),
                 "pillSwitchSeconds" => set(&mut self.pill_switch_seconds, v.as_u64().filter(|n| [0, 2, 3, 5].contains(n)).map(|n| n as u32)),
@@ -141,8 +144,13 @@ impl Settings {
         applied
     }
 
+    /// The primary provider: shown alone, or first (and in the tray) when both are shown.
     pub fn provider(&self) -> crate::usage::Provider {
         crate::usage::Provider::parse(&self.provider).unwrap_or(crate::usage::Provider::Codex)
+    }
+
+    pub fn shows(&self, p: crate::usage::Provider) -> bool {
+        self.show_both_providers || self.provider() == p
     }
 }
 
