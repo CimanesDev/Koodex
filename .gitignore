@@ -8,3 +8,5 @@ test-results/
 CodexBar — Structured Codex Build Prompt.md
 to-add.md
 docs/to-add-implementation.md
+src-tauri/target/
+src-tauri/gen/

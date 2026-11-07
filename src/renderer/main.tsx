@@ -1,6 +1,7 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
 import "./types/ipc";
+import "./bridge";
 import "./styles/globals.css";
 import "./styles/placement.css";
 import "./styles/dual.css";

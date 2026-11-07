@@ -1,8 +1,8 @@
 import { age } from "../../shared/format";
-import type { Snapshot } from "../../shared/types";
+import { providerName, type Snapshot } from "../../shared/types";
 export function SyncStatus({ state, now }: { state: Snapshot; now: number }) {
   const status = state.syncState;
-  const provider = state.provider === "claude" ? "Claude Code" : "Codex";
+  const provider = providerName(state.provider);
   const text =
     status === "synced" && state.usage
       ? `Synced ${age(state.usage!.fetchedAt, now)}`

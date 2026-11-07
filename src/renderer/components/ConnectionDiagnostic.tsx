@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { Snapshot } from "../../shared/types";
+import { providerName, type Snapshot } from "../../shared/types";
 import { connectionDiagnostic } from "../../shared/insights";
 export function ConnectionDiagnostic({
   state,
@@ -10,12 +10,11 @@ export function ConnectionDiagnostic({
 }) {
   const diagnostic = connectionDiagnostic(state);
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState("");
   if (!diagnostic) return null;
   return (
     <aside
       className="connection-diagnostic"
-      aria-label={`${state.provider === "claude" ? "Claude Code" : "Codex"} connection diagnostics`}
+      aria-label={`${providerName(state.provider)} connection diagnostics`}
     >
       <strong>{diagnostic.title}</strong>
       <p>{diagnostic.detail}</p>
@@ -23,30 +22,15 @@ export function ConnectionDiagnostic({
         disabled={busy}
         onClick={async () => {
           setBusy(true);
-          setMessage("");
           try {
-            if (diagnostic.action === "reconnect")
-              setMessage(await window.Koodex.prepareClaudeBridge());
             await refresh();
-          } catch (error) {
-            setMessage(
-              String(error).replace(
-                /^Error: (Error invoking remote method [^:]+: Error: )?/,
-                "",
-              ),
-            );
           } finally {
-            setBusy(false);
+            setTimeout(() => setBusy(false), 800);
           }
         }}
       >
-        {busy
-          ? "Trying..."
-          : diagnostic.action === "reconnect"
-            ? "Reconnect Claude Code"
-            : "Retry connection"}
+        {busy ? "Retrying…" : "Retry now"}
       </button>
-      {message && <p role="status">{message}</p>}
     </aside>
   );
 }

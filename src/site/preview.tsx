@@ -22,6 +22,7 @@ const colors = {
 };
 const now = Date.now();
 const sample: Snapshot = {
+  provider: "codex",
   syncState: "synced",
   usage: {
     fetchedAt: now,

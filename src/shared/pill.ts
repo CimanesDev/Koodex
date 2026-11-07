@@ -3,74 +3,54 @@ export const DOCK_TAB_WIDTH = 32;
 export const isVertical = (settings: Settings) =>
   settings.pillPlacement === "left" || settings.pillPlacement === "right";
 export const hasGrip = (settings: Settings) => settings.pillShowDragHandle;
+/** Logical pill size. Keep in sync with `pill_size` in src-tauri/src/geometry.rs. */
 export function pillSize(settings: Settings): {
   width: number;
   height: number;
 } {
-  if (settings.monitorBoth) {
-    const vertical = isVertical(settings);
-    const inner = pillSize({
-      ...settings,
-      monitorBoth: false,
-      pillShowDragHandle: false,
-      pillShowRefresh: false,
-    });
-    return vertical
-      ? {
-          width: Math.max(72, inner.width),
-          height:
-            (inner.height + 20) * 2 +
-            12 +
-            (hasGrip(settings) ? 16 : 0) +
-            (settings.pillShowRefresh ? 32 : 0),
-        }
-      : {
-          width:
-            inner.width +
-            68 +
-            (hasGrip(settings) ? 20 : 0) +
-            (settings.pillShowRefresh ? 32 : 0),
-          height: (inner.height + 4) * 2 + 10,
-        };
-  }
   const both = settings.pillLayout === "both",
     minimal = settings.pillContent === "indicator",
     vertical = isVertical(settings),
     combined = both && settings.pillBothStyle === "combined",
     ring = settings.pillIndicator === "ring",
     grip = hasGrip(settings) ? (vertical ? 16 : 20) : 0,
-    refresh = settings.pillShowRefresh ? 32 : 0;
+    refresh = settings.pillShowRefresh ? 32 : 0,
+    badge = settings.pillShowProvider ? (vertical ? 18 : 22) : 0,
+    reset = settings.pillShowReset && !minimal;
   if (vertical) {
     if (minimal)
       return {
         width: ring ? 40 : 36,
-        height: (ring ? (both && !combined ? 72 : 40) : 64) + grip + refresh,
+        height:
+          (ring ? (both && !combined ? 72 : 40) : 64) + grip + refresh + badge,
       };
     return {
       width: combined ? 144 : 132,
       height:
         (both ? 88 : 48) +
-        (settings.pillShowReset ? (both ? 28 : 14) : 0) +
+        (reset ? (both ? 28 : 14) : 0) +
         grip +
-        refresh,
+        refresh +
+        badge,
     };
   }
   if (combined) {
     if (minimal)
-      return { width: (ring ? 44 : 104) + grip + refresh, height: 44 };
+      return { width: (ring ? 44 : 104) + grip + refresh + badge, height: 44 };
     return {
-      width: 224 + (hasGrip(settings) ? 0 : -12) + refresh,
-      height: 64 + (settings.pillShowReset ? 26 : 0),
+      width: 224 + (hasGrip(settings) ? 0 : -12) + refresh + badge,
+      height: 64 + (reset ? 26 : 0),
     };
   }
   if (minimal)
     return {
-      width: (ring ? (both ? 80 : 44) : both ? 172 : 104) + grip + refresh,
+      width:
+        (ring ? (both ? 80 : 44) : both ? 172 : 104) + grip + refresh + badge,
       height: 40,
     };
   return {
-    width: (both ? 284 : 176) + refresh - (hasGrip(settings) ? 0 : 12),
-    height: (ring ? 44 : 50) + (settings.pillShowReset ? 18 : 0),
+    width: (both ? 284 : 176) + refresh + badge - (hasGrip(settings) ? 0 : 12),
+    height: (ring ? 44 : 50) + (reset ? 18 : 0),
   };
 }
 export interface WorkArea {

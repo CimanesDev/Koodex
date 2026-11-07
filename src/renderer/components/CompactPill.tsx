@@ -5,7 +5,12 @@ import {
   type CSSProperties,
   type PointerEvent,
 } from "react";
-import type { Settings, Snapshot, UsageWindow } from "../../shared/types";
+import {
+  providerName,
+  type Settings,
+  type Snapshot,
+  type UsageWindow,
+} from "../../shared/types";
 import { useAlternatingMetric } from "../hooks/useAlternatingMetric";
 import { UsageRing } from "./UsageRing";
 import { UsageBar } from "./UsageBar";
@@ -35,7 +40,7 @@ export function CompactPill({
   refresh?: () => Promise<void>;
 }) {
   const both = settings.pillLayout === "both";
-  const providerName = settings.provider === "claude" ? "Claude Code" : "Codex";
+  const provider = providerName(state.provider ?? settings.provider);
   const minimal = settings.pillContent === "indicator";
   const vertical = isVertical(settings);
   const docked = !preview && vertical && settings.pillSideHideable;
@@ -87,15 +92,14 @@ export function CompactPill({
   const { quota, next } = useAlternatingMetric(
     state.usage?.windows ?? [],
     settings.pillSwitchSeconds * 1000,
-    paused || both || settings.monitorBoth,
+    paused || both,
   );
   const quotas = both
     ? orderedQuotas(state.usage?.windows ?? [])
     : quota
       ? [quota]
       : [];
-  const canSwitch =
-    !settings.monitorBoth && !both && (state.usage?.windows.length ?? 0) > 1;
+  const canSwitch = !both && (state.usage?.windows.length ?? 0) > 1;
   function metric(w: UsageWindow) {
     return (
       <div
@@ -167,8 +171,8 @@ export function CompactPill({
           className={minimal ? "minimal-empty" : "metric"}
           title={
             state.syncState === "connecting"
-              ? `Connecting to ${providerName}`
-              : `${providerName} unavailable`
+              ? `Connecting to ${provider}`
+              : `${provider} unavailable`
           }
         >
           {state.syncState === "connecting"
@@ -177,7 +181,7 @@ export function CompactPill({
               : "Connecting…"
             : minimal
               ? "—"
-              : `${providerName} unavailable`}
+              : `${provider} unavailable`}
         </span>
       )}
       {state.syncState !== "synced" &&
@@ -195,45 +199,20 @@ export function CompactPill({
         )}
     </>
   );
-  const shownContent = settings.monitorBoth ? (
-    <div className="multi-provider-content">
-      {(["codex", "claude"] as const).map((provider) => {
-        const current =
-          state.provider === provider
-            ? state
-            : state.companion?.provider === provider
-              ? state.companion
-              : { provider, usage: null, syncState: "connecting" as const };
-        return (
-          <div
-            className="provider-pill-row"
-            key={provider}
-            aria-label={`${provider === "codex" ? "Codex" : "Claude Code"} pill`}
-          >
-            <span className="provider-pill-label">
-              {provider === "codex" ? "Codex" : "Claude"}
-            </span>
-            <CompactPill
-              state={current}
-              paused={paused}
-              now={now}
-              preview
-              refresh={refresh}
-              settings={{
-                ...settings,
-                provider,
-                monitorBoth: false,
-                pillShowDragHandle: false,
-                pillShowRefresh: false,
-                pillSideHideable: false,
-              }}
-            />
-          </div>
-        );
-      })}
-    </div>
-  ) : (
-    content
+  const badge = settings.pillShowProvider && (
+    <span
+      className={`provider-badge provider-${state.provider ?? settings.provider}`}
+      aria-label={provider}
+      title={provider}
+    >
+      {(state.provider ?? settings.provider) === "claude" ? "C" : "X"}
+    </span>
+  );
+  const shownContent = (
+    <>
+      {badge}
+      {content}
+    </>
   );
   const pill = (
     <div
@@ -241,6 +220,10 @@ export function CompactPill({
       onPointerMove={pointerMove}
       onPointerUp={pointerEnd}
       onPointerCancel={pointerEnd}
+      onContextMenu={(event) => {
+        event.preventDefault();
+        if (!preview) void window.Koodex.showPillMenu();
+      }}
       onClickCapture={(event) => {
         if (suppressClick.current) {
           event.preventDefault();
@@ -256,7 +239,7 @@ export function CompactPill({
           "--pill-opacity": settings.pillOpacity / 100,
         } as CSSProperties
       }
-      className={`pill ${settings.monitorBoth ? "pill-multi" : ""} ${both ? "pill-both" : ""} pill-${settings.pillIndicator} ${settings.pillShowReset && !minimal ? "pill-with-reset" : ""} ${preview ? "pill-preview" : ""} ${minimal ? "pill-minimal" : ""} ${vertical ? "pill-vertical" : ""} ${hasGrip(settings) ? "" : "pill-no-grip"} ${combined ? "pill-combined" : ""}`}
+      className={`pill ${both ? "pill-both" : ""} pill-${settings.pillIndicator} ${settings.pillShowReset && !minimal ? "pill-with-reset" : ""} ${preview ? "pill-preview" : ""} ${minimal ? "pill-minimal" : ""} ${vertical ? "pill-vertical" : ""} ${hasGrip(settings) ? "" : "pill-no-grip"} ${combined ? "pill-combined" : ""}`}
     >
       {hasGrip(settings) && (
         <div
@@ -276,12 +259,12 @@ export function CompactPill({
           className="pill-content"
           onClick={next}
           aria-label="Switch usage limit"
-          title="Click to switch · right-click for settings"
+          title={`${provider} · click to switch · right-click for more`}
         >
           {shownContent}
         </button>
       ) : (
-        <div className="pill-content" title="Right-click for settings">
+        <div className="pill-content" title={`${provider} · right-click for more`}>
           {shownContent}
         </div>
       )}
@@ -291,9 +274,7 @@ export function CompactPill({
           aria-label={preview ? "Refresh live preview" : "Refresh usage"}
           title="Refresh usage now"
           disabled={
-            !settings.monitorBoth &&
-            (state.syncState === "refreshing" ||
-              state.syncState === "connecting")
+            state.syncState === "refreshing" || state.syncState === "connecting"
           }
           onClick={() => void refresh()}
         >

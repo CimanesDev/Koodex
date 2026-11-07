@@ -14,7 +14,7 @@ export function paceEstimate(
     !fetched ||
     !Number.isFinite(fetched) ||
     now < fetched ||
-    now - fetched > (state.provider === "claude" ? 60000 : 600000) ||
+    now - fetched > 600000 ||
     !Number.isFinite(duration) ||
     duration <= 0 ||
     reset === null ||
@@ -39,59 +39,48 @@ export function paceEstimate(
 
 export function connectionDiagnostic(
   state: Snapshot,
-): { title: string; detail: string; action: "refresh" | "reconnect" } | null {
+): { title: string; detail: string } | null {
   if (state.syncState === "connecting" || state.syncState === "refreshing")
     return null;
-  const claude = state.provider === "claude";
-  if (claude && state.syncState === "error")
-    return {
-      title: "Claude connection needs attention",
-      detail:
-        state.error ||
-        "Reconnect the local status-line bridge, then complete a Claude Code response.",
-      action: "reconnect",
-    };
-  if (claude && (state.syncState !== "synced" || !state.usage?.windows.length))
-    return {
-      title: state.usage?.windows.length
-        ? "Waiting for a fresh Claude report"
-        : "Waiting for Claude quota data",
-      detail:
-        state.error ||
-        "Complete a response in a supported, signed-in Claude Code session. Refresh only rereads its last local report.",
-      action: "reconnect",
-    };
-  if (/Codex not found/i.test(state.error || ""))
-    return {
-      title: "Codex CLI not found",
-      detail:
-        "Install the Codex CLI or add its executable directory to PATH, then restart Koodex.",
-      action: "refresh",
-    };
-  if (/sign in|unauthoriz|authentication|401/i.test(state.error || ""))
-    return {
-      title: "Codex sign-in required",
-      detail:
-        "Run codex login in your terminal, finish signing in, then retry here.",
-      action: "refresh",
-    };
+  const error = state.error || "";
+  if (state.provider === "claude") {
+    if (/sign in|sign-in|log ?in|claude \/login/i.test(error))
+      return {
+        title: state.usage
+          ? "Claude sign-in needs attention · showing last usage"
+          : "Sign in to Claude Code",
+        detail: error,
+      };
+  } else {
+    if (/Codex not found/i.test(error))
+      return {
+        title: "Codex CLI not found",
+        detail:
+          "Install the Codex CLI or add its executable directory to PATH, then retry.",
+      };
+    if (/sign in|unauthoriz|authentication|401/i.test(error))
+      return {
+        title: "Codex sign-in required",
+        detail:
+          "Run codex login in your terminal, finish signing in, then retry here.",
+      };
+  }
   if (
     state.syncState === "offline" ||
     state.syncState === "stale" ||
     state.syncState === "error"
   )
     return {
-      title: state.usage ? "Showing saved usage" : "Unable to connect",
+      title: state.usage ? "Showing last known usage" : "Unable to connect",
       detail:
-        "Check your connection, then retry. Koodex also retries automatically; saved percentages may no longer reflect your allowance.",
-      action: "refresh",
+        error ||
+        "Check your connection, then retry. Koodex also retries automatically.",
     };
   if (!state.usage?.windows.length)
     return {
       title: "No usage limits reported",
       detail:
-        "This account did not return subscription quota windows. Check that your CLI is signed in to the intended account, then retry.",
-      action: "refresh",
+        "This account did not return subscription limits. Check that you are signed in with the intended Pro, Max, Plus or Pro account.",
     };
   return null;
 }

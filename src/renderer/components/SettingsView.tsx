@@ -1,5 +1,23 @@
 import { useEffect, useRef, useState } from "react";
-import type { Settings, Snapshot } from "../../shared/types";
+import {
+  providerName,
+  type Settings,
+  type Snapshot,
+} from "../../shared/types";
+import { age } from "../../shared/format";
+
+function providerStatus(state: Snapshot | undefined, active: boolean) {
+  if (!state) return "Checking…";
+  if (state.syncState === "synced" && state.usage) return "Connected";
+  if (/sign in|sign-in|log ?in/i.test(state.error || ""))
+    return "Sign-in needed";
+  if (/not found/i.test(state.error || "")) return "Not installed";
+  if (state.usage)
+    return active
+      ? `Last update ${age(state.usage.fetchedAt)}`
+      : `Last seen ${age(state.usage.fetchedAt)}`;
+  return active ? "Connecting…" : "Not checked yet";
+}
 import { UpdatePanel } from "./UpdatePanel";
 import { pillSize } from "../../shared/pill";
 import { CompactPill } from "./CompactPill";
@@ -48,7 +66,6 @@ export function SettingsView({
   );
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
-  const [claudeStatus, setClaudeStatus] = useState("");
   const [shortcutError, setShortcutError] = useState("");
   useEffect(() => {
     void window.Koodex.getShortcutError().then(setShortcutError);
@@ -88,7 +105,6 @@ export function SettingsView({
   }
   function toggle(
     key:
-      | "monitorBoth"
       | "floatingPillEnabled"
       | "showRefreshActivity"
       | "pillShowReset"
@@ -96,7 +112,8 @@ export function SettingsView({
       | "launchAtStartup"
       | "notificationsEnabled"
       | "pillSideHideable"
-      | "pillShowDragHandle",
+      | "pillShowDragHandle"
+      | "pillShowProvider",
     label: string,
     description: string,
     disabled = false,
@@ -118,13 +135,16 @@ export function SettingsView({
       </label>
     );
   }
-  const claudeState = state.provider === "claude" ? state : state.companion;
+  const [providers, setProviders] = useState<Snapshot[]>([]);
+  useEffect(() => {
+    void window.Koodex.getAllUsage().then(setProviders);
+  }, [state]);
   const size = pillSize(settings);
   const previewScale = Math.min(1, 100 / size.height);
   return (
     <main className="preferences-shell">
-      <header className="preferences-header">
-        <div className="brand-lockup">
+      <header className="preferences-header" data-tauri-drag-region>
+        <div className="brand-lockup" data-tauri-drag-region>
           <BrandMark />
           <div>
             <h1>Koodex</h1>
@@ -147,11 +167,7 @@ export function SettingsView({
         <div className="preview-caption">
           <span>YOUR FLOATING PILL</span>
           <span>
-            {settings.monitorBoth
-              ? "Codex + Claude Code"
-              : settings.provider === "claude"
-                ? "Claude Code"
-                : "Codex"}{" "}
+            {providerName(settings.provider)}{" "}
             ·{" "}
             {state.syncState === "synced"
               ? "Live usage"
@@ -562,89 +578,70 @@ export function SettingsView({
         {tab === "providers" && (
           <div className="preferences-grid">
             <section>
-              <h2>Your usage source</h2>
+              <h2>Show usage for</h2>
+              <div className="provider-cards" role="radiogroup" aria-label="Provider">
+                {(["codex", "claude"] as const).map((p) => {
+                  const status = providers.find((s) => s.provider === p);
+                  return (
+                    <button
+                      key={p}
+                      role="radio"
+                      className="choice-card provider-card"
+                      aria-checked={settings.provider === p}
+                      aria-pressed={settings.provider === p}
+                      onClick={() => void update({ provider: p })}
+                    >
+                      <strong>{providerName(p)}</strong>
+                      <small>{providerStatus(status, settings.provider === p)}</small>
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="preference-note">
+                The tray, pill, alerts and usage details all follow this
+                choice. Switch any time from the usage popup, the tray menu or
+                by right-clicking the pill.
+              </p>
               {toggle(
-                "monitorBoth",
-                "Show both providers",
-                "Keep Codex and Claude Code visible together in the pill and usage details.",
+                "pillShowProvider",
+                "Provider badge on the pill",
+                "A small X (Codex) or C (Claude Code) mark so you always know which you are viewing.",
               )}
-              <label className="select-row">
-                <span>
-                  {settings.monitorBoth ? "Tray provider" : "Provider"}
-                </span>
-                <select
-                  aria-label="Provider"
-                  value={settings.provider}
-                  onChange={(e) =>
-                    void update({
-                      provider: e.target.value as Settings["provider"],
-                    })
-                  }
-                >
-                  <option value="codex">Codex</option>
-                  <option value="claude">Claude Code</option>
-                </select>
-              </label>
-              <p className="preference-note">
-                {settings.monitorBoth
-                  ? "The tray icon and existing alerts follow this choice. Both providers keep updating independently."
-                  : "Your tray, pill and usage details follow this choice."}
-              </p>
-              <h2 className="section-gap">Cursor & other providers</h2>
-              <p className="preference-note">
-                Not connected in this version. Cursor's documented team usage
-                API is hourly, so it cannot supply live personal quotas here.
-              </p>
             </section>
             <section>
-              <h2>
-                {settings.provider === "codex" && !settings.monitorBoth
-                  ? "Codex"
-                  : "Connect Claude Code"}
-              </h2>
-              {settings.provider === "codex" && !settings.monitorBoth ? (
+              <h2>{providerName(settings.provider)}</h2>
+              {settings.provider === "codex" ? (
                 <p className="preference-note">
-                  Uses your signed-in Codex CLI. Usage events update
-                  immediately; background checks follow your General refresh
-                  setting. The service may report usage with a delay.
+                  Uses your signed-in Codex CLI (run <code>codex login</code>{" "}
+                  once). Usage events update immediately; background checks
+                  follow your refresh interval.
                 </p>
               ) : (
                 <>
                   <p className="preference-note">
-                    Requires Node.js on PATH and Claude Code 2.1.251+ with
-                    Pro/Max quota data. Reports arrive after Claude responses;
-                    idle data is marked as saved after a minute.
-                  </p>
-                  <button
-                    className="bridge-button"
-                    onClick={async () => {
-                      try {
-                        setClaudeStatus(
-                          await window.Koodex.prepareClaudeBridge(),
-                        );
-                        setError("");
-                      } catch {
-                        setError(
-                          "Could not connect Claude Code. Check that its settings file is valid and writable.",
-                        );
-                      }
-                    }}
-                  >
-                    Reconnect Claude Code
-                  </button>
-                  <p className="preference-note" role="status">
-                    {claudeState?.syncState === "error"
-                      ? claudeState.error
-                      : claudeStatus ||
-                        "Connected automatically. Any existing status line is preserved and settings are backed up before changes."}
+                    Reads your Claude Code sign-in (run <code>claude</code> and
+                    log in with a Pro or Max account) and asks Anthropic for
+                    the same account usage shown by <code>/usage</code>. Usage
+                    from the terminal, desktop app, IDE extensions and
+                    claude.ai is all included.
                   </p>
                   <p className="preference-note">
-                    Only quota percentages and reset times are saved. Refresh
-                    rereads the latest local report; it does not fetch a new
-                    Claude quota.
+                    When the saved sign-in expires, Koodex renews it the same
+                    way Claude Code does and keeps Claude Code signed in. Checks
+                    run at most every 30 seconds.
                   </p>
                 </>
               )}
+              {state.error && state.provider === settings.provider && (
+                <p className="save-error" role="status">
+                  {state.error}
+                </p>
+              )}
+              <h2 className="section-gap">Other providers</h2>
+              <p className="preference-note">
+                Cursor is not supported: its documented usage API is hourly
+                team data, not live personal limits.
+              </p>
             </section>
           </div>
         )}
@@ -718,20 +715,14 @@ export function SettingsView({
                 </select>
               </label>
               <p className="preference-note">
-                Codex usage events update immediately; polling checks other
-                sessions. Service reporting can lag. Claude follows its local
-                status-line reports. Refresh never resets a quota.
+                Codex usage events update immediately; polling catches other
+                sessions. Claude Code is checked at most every 30 seconds.
+                Refreshing never resets a limit.
               </p>
               <div className="privacy-note">
                 <BrandMark />
                 <p>
-                  Uses your local{" "}
-                  {settings.monitorBoth
-                    ? "Codex and Claude Code bridge"
-                    : settings.provider === "claude"
-                      ? "Claude Code bridge"
-                      : "Codex"}
-                  .
+                  Uses your local {providerName(settings.provider)} sign-in.
                   <br />
                   No Koodex account. No telemetry.
                 </p>
