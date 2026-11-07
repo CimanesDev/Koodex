@@ -456,6 +456,28 @@ fn on_menu(app: &AppHandle, id: &str) {
     }
 }
 
+/// Removes Windows startup entries that point at the Koodex 1.x Electron install.
+fn remove_legacy_startup_entries() {
+    #[cfg(windows)]
+    {
+        use winreg::enums::{HKEY_CURRENT_USER, KEY_READ, KEY_SET_VALUE};
+        let Ok(run) = winreg::RegKey::predef(HKEY_CURRENT_USER)
+            .open_subkey_with_flags("Software\\Microsoft\\Windows\\CurrentVersion\\Run", KEY_READ | KEY_SET_VALUE)
+        else {
+            return;
+        };
+        let stale: Vec<String> = run
+            .enum_values()
+            .flatten()
+            .filter(|(_, value)| value.to_string().to_ascii_lowercase().contains("\\programs\\koodex\\koodex.exe"))
+            .map(|(name, _)| name)
+            .collect();
+        for name in stale {
+            let _ = run.delete_value(name);
+        }
+    }
+}
+
 fn updates_disabled() -> Option<String> {
     if cfg!(debug_assertions) || std::env::var_os("KOODEX_MOCK").is_some() || std::env::var_os("KOODEX_TEST_DATA").is_some() {
         return Some("Update installation is available in the installed Windows app.".into());
@@ -576,6 +598,16 @@ fn main() {
                 let _ = claude::remove_legacy_bridge();
                 for stale in ["claude-bridge.cjs", "claude-usage.json", "claude-account-usage.json", "claude-discovered.json"] {
                     let _ = std::fs::remove_file(core.store.dir.join(stale));
+                }
+                remove_legacy_startup_entries();
+            }
+            // Keep "Launch at startup" pointing at this executable (the 1.x
+            // entry referenced the old Electron install, now removed).
+            let packaged = !cfg!(debug_assertions) && core.mock.is_none() && std::env::var_os("KOODEX_TEST_DATA").is_none();
+            if packaged && settings.launch_at_startup {
+                let launcher = handle.autolaunch();
+                if !launcher.is_enabled().unwrap_or(false) {
+                    let _ = launcher.enable();
                 }
             }
             let _ = core.store.write("settings", &settings);

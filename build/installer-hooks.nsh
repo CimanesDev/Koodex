@@ -4,5 +4,17 @@
 !macro NSIS_HOOK_PREINSTALL
   IfFileExists "$LOCALAPPDATA\Programs\koodex\Uninstall Koodex.exe" 0 +3
     nsExec::Exec 'taskkill /F /IM "Koodex.exe" /FI "MODULES eq ffmpeg.dll"'
-    ExecWait '"$LOCALAPPDATA\Programs\koodex\Uninstall Koodex.exe" /S --updated'
+    ExecWait '"$LOCALAPPDATA\Programs\koodex\Uninstall Koodex.exe" /S'
+!macroend
+
+; Koodex 1.x hands over through electron-updater, which runs this installer
+; silently with `--force-run --updated` and expects the app to relaunch.
+!macro NSIS_HOOK_POSTINSTALL
+  ${If} ${Silent}
+    ClearErrors
+    ${GetOptions} $CMDLINE "--force-run" $R1
+    ${IfNot} ${Errors}
+      nsis_tauri_utils::RunAsUser "$INSTDIR\${MAINBINARYNAME}.exe" ""
+    ${EndIf}
+  ${EndIf}
 !macroend

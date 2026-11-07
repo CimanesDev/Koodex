@@ -69,6 +69,4 @@ Layout:
 npm run release
 ```
 
-This builds `Koodex_<version>_x64-setup.exe` under `src-tauri/target/release/bundle/nsis/` (or `$env:CARGO_TARGET_DIR`) and writes `SHA256SUMS.txt` beside it. Upload both to a GitHub release tagged `v<version>`. The in-app updater refuses installers that are not listed in `SHA256SUMS.txt`. Installed copies check shortly after launch and every six hours; nothing installs until you choose **Restart and install**. Never replace the files of a published version; release a higher version instead. For signing, see [docs/code-signing.md](docs/code-signing.md).
-
-Note for the first 2.0 release: 1.x copies update through electron-updater, which reads `latest.yml`. Either ask 1.x users to download 2.0 manually, or also publish a `latest.yml` that points at the 2.0 setup file (with its `sha512` and `size`) so 1.x can hand over.
+This builds `Koodex_<version>_x64-setup.exe` under `src-tauri/target/release/bundle/nsis/` (or `$env:CARGO_TARGET_DIR`) and writes `SHA256SUMS.txt` and `latest.yml` beside it. Upload all three to a GitHub release tagged `v<version>`. `latest.yml` lets Koodex 1.x installs update to 2.x from their own App updates panel. The in-app updater refuses installers that are not listed in `SHA256SUMS.txt`. Installed copies check shortly after launch and every six hours; nothing installs until you choose **Restart and install**. Never replace the files of a published version; release a higher version instead. For signing, see [docs/code-signing.md](docs/code-signing.md).
