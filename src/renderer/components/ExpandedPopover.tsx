@@ -3,16 +3,16 @@ import { age } from "../../shared/format";
 import { UsageWindow } from "./UsageWindow";
 import { SyncStatus } from "./SyncStatus";
 import { ConnectionDiagnostic } from "./ConnectionDiagnostic";
-import { ProviderSwitch } from "./ProviderSwitch";
+import { ProviderSwitch, type ProviderView } from "./ProviderSwitch";
+import { ProviderLogo } from "./ProviderLogo";
 import { RefreshIcon } from "./Icons";
 
-function planLabel(state: Snapshot) {
-  const plan = state.usage?.planType;
-  if (!plan) return "";
-  return plan.charAt(0).toUpperCase() + plan.slice(1);
-}
+const plan = (state: Snapshot) => {
+  const p = state.usage?.planType;
+  return p ? p.charAt(0).toUpperCase() + p.slice(1) : "";
+};
 
-export function ExpandedPopover({
+function ProviderCard({
   state,
   now,
   refresh,
@@ -21,14 +21,50 @@ export function ExpandedPopover({
   now: number;
   refresh: () => Promise<void>;
 }) {
-  const provider = providerName(state.provider);
-  const plan = planLabel(state);
-  const busy =
-    state.syncState === "connecting" || state.syncState === "refreshing";
+  const name = providerName(state.provider);
   return (
-    <main className="panel usage-panel">
+    <section className="provider-card-usage" aria-label={`${name} usage`}>
+      <header className="provider-card-head">
+        <ProviderLogo provider={state.provider} size={15} />
+        <h2>{name}</h2>
+        {plan(state) && <span className="plan-chip">{plan(state)}</span>}
+        <SyncStatus state={state} now={now} compact />
+      </header>
+      <div className="quotas quotas-compact">
+        {state.usage?.windows.map((quota) => (
+          <UsageWindow key={quota.id} quota={quota} now={now} state={state} compact />
+        ))}
+      </div>
+      {state.syncState === "connecting" && !state.usage && (
+        <p className="empty">Connecting&hellip;</p>
+      )}
+      <ConnectionDiagnostic state={state} refresh={refresh} />
+    </section>
+  );
+}
+
+export function ExpandedPopover({
+  shown,
+  view,
+  now,
+  refresh,
+}: {
+  shown: Snapshot[];
+  view: ProviderView;
+  now: number;
+  refresh: () => Promise<void>;
+}) {
+  const state = shown[0] ?? { provider: "codex", usage: null, syncState: "connecting" };
+  const both = shown.length > 1;
+  const busy = shown.every(
+    (s) => s.syncState === "connecting" || s.syncState === "refreshing",
+  );
+  const newest = Math.max(0, ...shown.map((s) => s.usage?.fetchedAt ?? 0));
+  const name = providerName(state.provider);
+  return (
+    <main className={`panel usage-panel ${both ? "usage-panel-both" : ""}`}>
       <header>
-        <ProviderSwitch value={state.provider ?? "codex"} compact />
+        <ProviderSwitch value={view} compact />
         <button
           className="icon-button"
           aria-label="Settings"
@@ -38,23 +74,35 @@ export function ExpandedPopover({
           &middot;&middot;&middot;
         </button>
       </header>
-      <section className="provider-usage" aria-label={`${provider} usage`}>
-        <SyncStatus state={state} now={now} />
-        <div className="quotas">
-          {state.usage?.windows.map((quota) => (
-            <UsageWindow key={quota.id} quota={quota} now={now} state={state} />
+      {both ? (
+        <div className="provider-cards-usage">
+          {shown.map((s) => (
+            <ProviderCard key={s.provider} state={s} now={now} refresh={refresh} />
           ))}
         </div>
-        {state.syncState === "connecting" && !state.usage && (
-          <p className="empty">Connecting to {provider}&hellip;</p>
-        )}
-        <ConnectionDiagnostic state={state} refresh={refresh} />
-      </section>
+      ) : (
+        <section className="provider-usage" aria-label={`${name} usage`}>
+          <SyncStatus state={state} now={now} />
+          <div className="quotas">
+            {state.usage?.windows.map((quota) => (
+              <UsageWindow key={quota.id} quota={quota} now={now} state={state} />
+            ))}
+          </div>
+          {state.syncState === "connecting" && !state.usage && (
+            <p className="empty">Connecting to {name}&hellip;</p>
+          )}
+          <ConnectionDiagnostic state={state} refresh={refresh} />
+        </section>
+      )}
       <footer>
         <span>
-          {state.usage
-            ? `${plan ? `${plan} plan · ` : ""}Updated ${age(state.usage.fetchedAt, now)}`
-            : `Reads your local ${provider} sign-in`}
+          {both
+            ? newest
+              ? `Updated ${age(newest, now)}`
+              : "Reads your local sign-ins"
+            : state.usage
+              ? `${plan(state) ? `${plan(state)} plan · ` : ""}Updated ${age(state.usage.fetchedAt, now)}`
+              : `Reads your local ${name} sign-in`}
         </span>
         <button
           className={`icon-button refresh ${busy ? "spinning" : ""}`}

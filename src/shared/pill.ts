@@ -17,6 +17,18 @@ export function pillSize(settings: Settings): {
     refresh = settings.pillShowRefresh ? 32 : 0,
     badge = settings.pillShowProvider ? (vertical ? 18 : 22) : 0,
     reset = settings.pillShowReset && !minimal;
+  if (settings.showBothProviders) {
+    // Two provider segments: logo + both-limits indicator (+ two short values).
+    if (vertical) {
+      const segment = 20 + (ring ? 28 : 14) + (minimal ? 0 : 26);
+      return {
+        width: minimal ? 44 : 56,
+        height: segment * 2 + 13 + 16 + grip + refresh,
+      };
+    }
+    const segment = 22 + (ring ? 28 : 44) + (minimal ? 0 : 42);
+    return { width: segment * 2 + 13 + 16 + grip + refresh, height: 44 };
+  }
   if (vertical) {
     if (minimal)
       return {

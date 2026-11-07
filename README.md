@@ -6,11 +6,17 @@ A quiet Windows tray companion that shows your **Codex** or **Claude Code** usag
 
 Choose the `x64-setup.exe` installer under **Assets**. Requires Windows 10/11 x64 (WebView2 is installed automatically if missing). Release builds are unsigned and may show a Windows publisher warning.
 
+## What's new in 2.1
+
+- **Show both providers, cleanly.** Pick **Codex**, **Claude Code** or **Both** from the popup header, the tray menu or the pill's right-click menu. In Both, the pill shows each provider as one compact segment (logo, a 5-hour/weekly indicator, two values) and the popup shows one card per provider. The tray icon follows the provider you choose.
+- **Real logos.** The pill, switches and settings use the official Codex (OpenAI) and Claude marks.
+- **Fixed:** right-click → **Usage details** now opens the usage popup (it closed instantly before).
+
 ## What's new in 2.0
 
 - **Rewritten in Rust (Tauri 2).** No bundled Chromium. Tray-only Koodex uses a few MB instead of ~90 MB, and the installer is a few MB instead of ~100 MB. See [Resource use](#resource-use).
 - **Claude Code usage that actually updates.** 1.x relied on Claude Code's terminal status line, so usage from the desktop app, IDE extensions or claude.ai never arrived and reports went stale. Koodex now reads the same account usage that Claude Code's `/usage` shows, so every Claude surface counts. No Node.js required.
-- **One provider at a time.** The cluttered "show both providers" mode is gone. Switch instantly from the usage popup header, the tray menu (**Show usage for**) or the pill's right-click menu. An optional **X / C** badge on the pill shows which one you are viewing.
+- **One provider at a time** by default, switched instantly from the usage popup header, the tray menu (**Show usage for**) or the pill's right-click menu.
 - Sharper tray icons rendered at your display's DPI, a draggable settings window that no longer closes when it loses focus, and an updater that verifies every installer against the release's SHA-256 checksums.
 
 Upgrading from 1.x keeps your preferences (`%APPDATA%\Koodex`). The installer removes the old Electron copy, and Koodex removes the 1.x Claude status-line bridge from `~/.claude/settings.json`, restoring your previous status line (a dated backup is kept).
@@ -70,3 +76,7 @@ npm run release
 ```
 
 This builds `Koodex_<version>_x64-setup.exe` under `src-tauri/target/release/bundle/nsis/` (or `$env:CARGO_TARGET_DIR`) and writes `SHA256SUMS.txt` and `latest.yml` beside it. Upload all three to a GitHub release tagged `v<version>`. `latest.yml` lets Koodex 1.x installs update to 2.x from their own App updates panel. The in-app updater refuses installers that are not listed in `SHA256SUMS.txt`. Installed copies check shortly after launch and every six hours; nothing installs until you choose **Restart and install**. Never replace the files of a published version; release a higher version instead. For signing, see [docs/code-signing.md](docs/code-signing.md).
+
+## Credits
+
+Provider logos come from [Simple Icons](https://simpleicons.org) (CC0). Claude is a trademark of Anthropic; OpenAI and Codex are trademarks of OpenAI. They are used only to identify each provider; Koodex is not affiliated with either company.

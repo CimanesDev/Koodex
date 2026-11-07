@@ -25,6 +25,7 @@ const WEBVIEW_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreen
 struct State {
     anchor: Option<Rect>,
     blurred_at: i64,
+    opened_at: i64,
     drag: Option<((f64, f64), Rect)>,
     expanded: bool,
     dock_mode: String,
@@ -90,7 +91,7 @@ impl Windows {
             return Some(w);
         }
         let settings = label == SETTINGS;
-        let builder = WebviewWindowBuilder::new(app, label, WebviewUrl::App(format!("index.html?{query}").into()))
+        let mut builder = WebviewWindowBuilder::new(app, label, WebviewUrl::App(format!("index.html?{query}").into()))
             .title(match label { SETTINGS => "Koodex Settings", POPOVER => "Koodex Usage", _ => "Koodex" })
             .inner_size(width, height)
             .decorations(false)
@@ -104,6 +105,11 @@ impl Windows {
             .focused(label != PILL)
             .additional_browser_args(WEBVIEW_ARGS)
             .visible(false);
+        // Mock/test profiles keep their own WebView2 data so they can run beside
+        // an installed Koodex (a shared profile must use identical arguments).
+        if let Some(dir) = crate::isolated_webview_dir() {
+            builder = builder.data_directory(dir);
+        }
         let window = builder.build().ok()?;
         let handle = app.clone();
         let name = label.to_string();
@@ -119,6 +125,14 @@ impl Windows {
             }
             WindowEvent::Focused(false) if name == POPOVER => {
                 let core = crate::core(&handle);
+                // A closing context menu or tray click can steal focus right
+                // after the popover opens; take it back instead of hiding.
+                if now_ms() - core.windows.state.lock().unwrap().opened_at < 700 {
+                    if let Some(w) = handle.get_webview_window(POPOVER) {
+                        let _ = w.set_focus();
+                    }
+                    return;
+                }
                 core.windows.state.lock().unwrap().blurred_at = now_ms();
                 core.windows.hide(&handle, POPOVER);
             }
@@ -162,7 +176,11 @@ impl Windows {
         let anchor = anchor
             .or_else(|| app.get_webview_window(PILL).filter(|w| w.is_visible().unwrap_or(false)).and_then(|w| bounds(&w)))
             .or_else(|| app.cursor_position().ok().map(|p| Rect { x: p.x, y: p.y, width: 1.0, height: 1.0 }));
-        self.state.lock().unwrap().anchor = anchor;
+        {
+            let mut st = self.state.lock().unwrap();
+            st.anchor = anchor;
+            st.opened_at = now_ms();
+        }
         let Some(w) = self.create(app, POPOVER, "view=popover", POPOVER_WIDTH, 270.0) else { return };
         let height = bounds(&w).map(|b| b.height);
         self.position_popover(app, &w, height);

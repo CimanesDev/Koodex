@@ -29,6 +29,15 @@ pub fn pill_size(s: &Settings) -> (f64, f64) {
     let refresh = if s.pill_show_refresh { 32.0 } else { 0.0 };
     let badge = if s.pill_show_provider { if vertical { 18.0 } else { 22.0 } } else { 0.0 };
     let reset = s.pill_show_reset && !minimal;
+    if s.show_both_providers {
+        // Two provider segments: logo + both-limits indicator (+ two short values).
+        if vertical {
+            let segment = 20.0 + (if ring { 28.0 } else { 14.0 }) + if minimal { 0.0 } else { 26.0 };
+            return (if minimal { 44.0 } else { 56.0 }, segment * 2.0 + 13.0 + 16.0 + grip + refresh);
+        }
+        let segment = 22.0 + (if ring { 28.0 } else { 44.0 }) + if minimal { 0.0 } else { 42.0 };
+        return (segment * 2.0 + 13.0 + 16.0 + grip + refresh, 44.0);
+    }
     if vertical {
         if minimal {
             return (
@@ -158,6 +167,14 @@ mod tests {
         let size = pill_size(&s);
         assert_eq!(size, (176.0, 44.0));
         assert_eq!(pinned_position(&s, AREA, size, 1.0), (1920.0 - 176.0 - 20.0, 1040.0 - 44.0 - 20.0));
+    }
+
+    #[test]
+    fn both_providers_size() {
+        let s = Settings { show_both_providers: true, ..Default::default() };
+        assert_eq!(pill_size(&s), (2.0 * 92.0 + 13.0 + 16.0 + 20.0, 44.0));
+        let v = Settings { pill_placement: "left".into(), pill_content: "indicator".into(), ..s };
+        assert_eq!(pill_size(&v), (44.0, 2.0 * 48.0 + 13.0 + 16.0 + 16.0));
     }
 
     #[test]

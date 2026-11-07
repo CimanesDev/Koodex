@@ -4,9 +4,12 @@ import { CompactPill } from "./components/CompactPill";
 import { ExpandedPopover } from "./components/ExpandedPopover";
 import { SettingsView } from "./components/SettingsView";
 import { useSettings } from "./hooks/useSettings";
+import { useShownUsage } from "./hooks/useShownUsage";
+import { viewOf } from "./components/ProviderSwitch";
 export function App() {
   const state = useUsage();
   const settings = useSettings();
+  const shown = useShownUsage();
   const pill = new URLSearchParams(location.search).get("view") === "pill";
   const preferences =
     new URLSearchParams(location.search).get("view") === "settings";
@@ -55,14 +58,20 @@ export function App() {
       {pill ? (
         <CompactPill
           state={state}
+          shown={shown}
           paused={view === "paused"}
           settings={settings}
           now={now}
         />
       ) : preferences ? (
-        <SettingsView settings={settings} now={now} state={state} />
+        <SettingsView settings={settings} now={now} state={state} shown={shown} />
       ) : (
-        <ExpandedPopover state={state} now={now} refresh={state.refresh} />
+        <ExpandedPopover
+          shown={shown.length ? shown : [state]}
+          view={viewOf(settings)}
+          now={now}
+          refresh={state.refresh}
+        />
       )}
     </div>
   );

@@ -68,6 +68,11 @@ fn data_dir() -> PathBuf {
     base.join(if std::env::var_os("KOODEX_MOCK").is_some() { "Koodex-mock" } else { "Koodex" })
 }
 
+pub fn isolated_webview_dir() -> Option<PathBuf> {
+    let isolated = std::env::var_os("KOODEX_MOCK").is_some() || std::env::var_os("KOODEX_TEST_DATA").is_some();
+    isolated.then(|| data_dir().join("webview"))
+}
+
 fn mock_usage(scenario: &str) -> Option<Usage> {
     let now = now_ms();
     let values = match scenario {
@@ -95,20 +100,37 @@ impl Core {
     fn active(&self) -> Provider {
         self.settings.lock().unwrap().provider()
     }
+    fn shows(&self, p: Provider) -> bool {
+        self.settings.lock().unwrap().shows(p)
+    }
+    /// The primary provider's snapshot.
     pub fn snapshot(&self) -> Snapshot {
         self.snapshots.lock().unwrap()[self.active().index()].clone()
+    }
+    /// Snapshots of every provider currently shown, primary first.
+    fn shown(&self) -> Vec<Snapshot> {
+        let settings = self.settings();
+        let all = self.snapshots.lock().unwrap().clone();
+        let primary = settings.provider();
+        let mut out = vec![all[primary.index()].clone()];
+        if settings.show_both_providers {
+            out.extend(all.into_iter().filter(|s| s.provider != primary));
+        }
+        out
     }
 
     fn publish(&self) {
         let state = self.snapshot();
+        let shown = self.shown();
         let _ = self.app.emit("usage", &state);
-        self.tray.render(&self.app, &state, &self.settings(), &self.updates.get());
+        let _ = self.app.emit("usage-all", &shown);
+        self.tray.render(&self.app, &shown, &self.settings(), &self.updates.get());
         self.windows.restore_overlay(&self.app);
     }
 
     fn set_snapshot(&self, p: Provider, f: impl FnOnce(&mut Snapshot)) {
         f(&mut self.snapshots.lock().unwrap()[p.index()]);
-        if p == self.active() {
+        if self.shows(p) {
             self.publish();
         }
     }
@@ -145,7 +167,7 @@ impl Core {
             }
         }
         let settings = self.settings();
-        if self.mock.is_none() && settings.notifications_enabled && p == settings.provider() {
+        if self.mock.is_none() && settings.notifications_enabled && settings.shows(p) {
             let mut ledgers = self.ledgers.lock().unwrap();
             let ledger = &mut ledgers[p.index()];
             let before = ledger.clone();
@@ -191,7 +213,7 @@ impl Core {
     async fn monitor(self: Arc<Self>, p: Provider) {
         let mut failures: u32 = 0;
         loop {
-            if self.active() != p {
+            if !self.shows(p) {
                 failures = 0;
                 self.wake[p.index()].notified().await;
                 continue;
@@ -201,7 +223,7 @@ impl Core {
             });
             let result = self.read(p).await;
             let mut delay = self.interval(p);
-            if self.active() == p {
+            if self.shows(p) {
                 match result {
                     Ok(usage) => {
                         failures = 0;
@@ -225,7 +247,11 @@ impl Core {
     }
 
     pub fn refresh(&self) {
-        self.wake[self.active().index()].notify_one();
+        for p in PROVIDERS {
+            if self.shows(p) {
+                self.wake[p.index()].notify_one();
+            }
+        }
     }
 
     pub fn update_settings(&self, patch: Value) -> Result<Settings, String> {
@@ -257,12 +283,15 @@ impl Core {
             return Err(e);
         }
         *self.settings.lock().unwrap() = next.clone();
-        if next.provider != previous.provider {
-            if previous.provider() == Provider::Codex {
-                let core = core(&self.app);
-                tauri::async_runtime::spawn(async move { core.codex.stop().await });
+        for p in PROVIDERS {
+            match (previous.shows(p), next.shows(p)) {
+                (false, true) => self.wake[p.index()].notify_one(),
+                (true, false) if p == Provider::Codex => {
+                    let core = core(&self.app);
+                    tauri::async_runtime::spawn(async move { core.codex.stop().await });
+                }
+                _ => {}
             }
-            self.wake[next.provider().index()].notify_one();
         }
         if next.refresh_interval_seconds != previous.refresh_interval_seconds {
             self.refresh();
@@ -308,9 +337,15 @@ type Cmd<T> = Result<T, String>;
 fn get_usage(app: AppHandle) -> Snapshot {
     core(&app).snapshot()
 }
+/// Every provider's last snapshot (for the Providers settings tab).
 #[tauri::command]
 fn get_all_usage(app: AppHandle) -> Vec<Snapshot> {
     core(&app).snapshots.lock().unwrap().to_vec()
+}
+/// The providers currently shown, primary first.
+#[tauri::command]
+fn get_shown_usage(app: AppHandle) -> Vec<Snapshot> {
+    core(&app).shown()
 }
 #[tauri::command]
 async fn refresh_usage(app: AppHandle) {
@@ -380,16 +415,24 @@ async fn expand_pill(app: AppHandle, expanded: bool) {
 async fn pill_menu(app: AppHandle) -> Cmd<()> {
     use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
     let w = app.get_webview_window(windows::PILL).ok_or("No pill")?;
-    let other = match core(&app).active() {
-        Provider::Codex => ("pill-provider-claude", "Show Claude Code"),
-        Provider::Claude => ("pill-provider-codex", "Show Codex"),
-    };
+    let settings = core(&app).settings();
     let e = |e: tauri::Error| e.to_string();
+    let show = tauri::menu::Submenu::with_items(
+        &app,
+        "Show usage for",
+        true,
+        &[
+            &tauri::menu::CheckMenuItem::with_id(&app, "pill-provider-codex", "Codex", true, !settings.show_both_providers && settings.provider() == Provider::Codex, None::<&str>).map_err(e)?,
+            &tauri::menu::CheckMenuItem::with_id(&app, "pill-provider-claude", "Claude Code", true, !settings.show_both_providers && settings.provider() == Provider::Claude, None::<&str>).map_err(e)?,
+            &tauri::menu::CheckMenuItem::with_id(&app, "pill-provider-both", "Both", true, settings.show_both_providers, None::<&str>).map_err(e)?,
+        ],
+    )
+    .map_err(e)?;
     let menu = Menu::with_items(
         &app,
         &[
             &MenuItem::with_id(&app, "open", "Usage details", true, None::<&str>).map_err(e)?,
-            &MenuItem::with_id(&app, other.0, other.1, true, None::<&str>).map_err(e)?,
+            &show,
             &MenuItem::with_id(&app, "refresh", "Refresh", true, None::<&str>).map_err(e)?,
             &MenuItem::with_id(&app, "settings", "Settings", true, None::<&str>).map_err(e)?,
             &PredefinedMenuItem::separator(&app).map_err(e)?,
@@ -431,15 +474,25 @@ async fn quit(app: AppHandle) {
 fn on_menu(app: &AppHandle, id: &str) {
     let core = core(app);
     match id {
-        "open" => core.windows.open_popover(app, None),
+        // Let the native menu finish closing first, or it takes focus back.
+        "open" => {
+            let app = app.clone();
+            tauri::async_runtime::spawn(async move {
+                tokio::time::sleep(Duration::from_millis(80)).await;
+                core.windows.open_popover(&app, None);
+            });
+        }
         "refresh" => core.refresh(),
         "settings" => core.windows.open_settings(app, None),
         "updates" => core.windows.open_settings(app, Some("general")),
         "provider-codex" | "pill-provider-codex" => {
-            let _ = core.update_settings(json!({"provider": "codex"}));
+            let _ = core.update_settings(json!({"provider": "codex", "showBothProviders": false}));
         }
         "provider-claude" | "pill-provider-claude" => {
-            let _ = core.update_settings(json!({"provider": "claude"}));
+            let _ = core.update_settings(json!({"provider": "claude", "showBothProviders": false}));
+        }
+        "provider-both" | "pill-provider-both" => {
+            let _ = core.update_settings(json!({"showBothProviders": true}));
         }
         "startup" => {
             let enabled = core.settings().launch_at_startup;
@@ -491,10 +544,15 @@ fn updates_disabled() -> Option<String> {
 
 fn main() {
     let startup = std::env::args().any(|a| a == "--startup");
-    tauri::Builder::default()
-        .plugin(tauri_plugin_single_instance::init(|app, _, _| {
+    // Mock and test profiles may run beside an installed Koodex.
+    let isolated = std::env::var_os("KOODEX_MOCK").is_some() || std::env::var_os("KOODEX_TEST_DATA").is_some();
+    let mut builder = tauri::Builder::default();
+    if !isolated {
+        builder = builder.plugin(tauri_plugin_single_instance::init(|app, _, _| {
             core(app).windows.open_popover(app, None);
-        }))
+        }));
+    }
+    builder
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_autostart::init(tauri_plugin_autostart::MacosLauncher::LaunchAgent, Some(vec!["--startup"])))
         .plugin(tauri_plugin_notification::init())
@@ -502,6 +560,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             get_usage,
             get_all_usage,
+            get_shown_usage,
             refresh_usage,
             get_settings,
             update_settings,
@@ -569,7 +628,7 @@ fn main() {
                 Arc::new(move |state| {
                     let _ = updates_handle.emit("updates", &state);
                     if let Some(core) = updates_handle.try_state::<Arc<Core>>() {
-                        core.tray.render(&updates_handle, &core.snapshot(), &core.settings(), &state);
+                        core.tray.render(&updates_handle, &core.shown(), &core.settings(), &state);
                     }
                 }),
             );
@@ -617,7 +676,7 @@ fn main() {
             for p in PROVIDERS {
                 tauri::async_runtime::spawn(core.clone().monitor(p));
             }
-            core.wake[settings.provider().index()].notify_one();
+            core.refresh();
             core.windows.sync_pill(&handle, &settings);
             core.publish();
             if !settings.setup_completed && !startup {

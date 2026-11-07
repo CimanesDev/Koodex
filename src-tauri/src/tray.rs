@@ -65,9 +65,11 @@ impl Tray {
             .build(app)
     }
 
-    pub fn render(&self, app: &AppHandle, state: &Snapshot, settings: &Settings, updates: &UpdateState) {
+    /// `shown` lists the visible providers, primary first. The icon follows the primary.
+    pub fn render(&self, app: &AppHandle, shown: &[Snapshot], settings: &Settings, updates: &UpdateState) {
         let Some(tray) = app.tray_by_id(TRAY_ID) else { return };
-        let windows = state.usage.as_ref().map(|u| u.windows.clone()).unwrap_or_default();
+        let Some(primary) = shown.first() else { return };
+        let windows = primary.usage.as_ref().map(|u| u.windows.clone()).unwrap_or_default();
         let (five, weekly) = tray_levels(&windows);
         let light = match settings.tray_color.as_str() {
             "light" => true,
@@ -86,21 +88,40 @@ impl Tray {
             }
         }
 
-        let provider = settings.provider();
-        let lines: Vec<String> = windows.iter().map(|w| line(&w.label, &w.id, w.remaining_percent)).collect();
-        let status = match state.sync_state {
-            SyncState::Synced | SyncState::Refreshing => None,
-            SyncState::Stale => Some("Offline · last known usage"),
-            SyncState::Connecting => Some("Connecting…"),
-            SyncState::Offline | SyncState::Error => Some("Needs attention — open Koodex"),
-        };
-        let mut tooltip: Vec<String> = vec![format!("Koodex · {}", provider.name())];
-        tooltip.extend(lines.iter().cloned());
-        tooltip.extend(status.map(String::from));
+        let both = shown.len() > 1;
+        // One section per provider: a heading when several are shown, then its limits.
+        let sections: Vec<(Provider, Vec<String>, Option<&str>)> = shown
+            .iter()
+            .map(|s| {
+                let lines = s
+                    .usage
+                    .as_ref()
+                    .map(|u| u.windows.iter().map(|w| line(&w.label, &w.id, w.remaining_percent)).collect())
+                    .unwrap_or_default();
+                let status = match s.sync_state {
+                    SyncState::Synced | SyncState::Refreshing => None,
+                    SyncState::Stale => Some("Offline · last known usage"),
+                    SyncState::Connecting => Some("Connecting…"),
+                    SyncState::Offline | SyncState::Error => Some("Needs attention"),
+                };
+                (s.provider, lines, status)
+            })
+            .collect();
+        let mut tooltip: Vec<String> = vec![if both { "Koodex".to_string() } else { format!("Koodex · {}", primary.provider.name()) }];
+        for (provider, lines, status) in &sections {
+            if both {
+                let short: Vec<String> = lines.iter().map(|l| l.replace(" left", "")).collect();
+                let detail = if short.is_empty() { status.unwrap_or("unavailable").to_string() } else { short.join(" · ") };
+                tooltip.push(format!("{}: {detail}", if *provider == Provider::Claude { "Claude" } else { "Codex" }));
+            } else {
+                tooltip.extend(lines.iter().cloned());
+                tooltip.extend(status.map(String::from));
+            }
+        }
         let tooltip: String = tooltip.join("\n").chars().take(127).collect();
         let _ = tray.set_tooltip(Some(tooltip));
 
-        let menu_key = serde_json::json!([lines, provider, settings.launch_at_startup, settings.floating_pill_enabled, updates.status, updates.version]).to_string();
+        let menu_key = serde_json::json!([sections.iter().map(|(p, l, _)| (p, l)).collect::<Vec<_>>(), settings.provider, settings.show_both_providers, settings.launch_at_startup, settings.floating_pill_enabled, updates.status, updates.version]).to_string();
         {
             let mut current = self.menu_key.lock().unwrap();
             if *current == menu_key {
@@ -108,24 +129,36 @@ impl Tray {
             }
             *current = menu_key;
         }
-        if let Ok(menu) = build_menu(app, provider, &lines, settings, updates) {
+        let sections: Vec<(Provider, Vec<String>)> = sections.into_iter().map(|(p, l, _)| (p, l)).collect();
+        if let Ok(menu) = build_menu(app, &sections, settings, updates) {
             let _ = tray.set_menu(Some(menu));
         }
     }
 }
 
-fn build_menu(app: &AppHandle, provider: Provider, lines: &[String], settings: &Settings, updates: &UpdateState) -> tauri::Result<Menu<Wry>> {
+fn build_menu(app: &AppHandle, sections: &[(Provider, Vec<String>)], settings: &Settings, updates: &UpdateState) -> tauri::Result<Menu<Wry>> {
     let menu = Menu::new(app)?;
-    menu.append(&MenuItem::with_id(app, "header", format!("Koodex · {}", provider.name()), false, None::<&str>)?)?;
-    for (i, l) in lines.iter().enumerate() {
-        menu.append(&MenuItem::with_id(app, format!("line-{i}"), l, false, None::<&str>)?)?;
+    let both = sections.len() > 1;
+    if !both {
+        menu.append(&MenuItem::with_id(app, "header", format!("Koodex · {}", settings.provider().name()), false, None::<&str>)?)?;
+    }
+    for (p, lines) in sections {
+        if both {
+            menu.append(&MenuItem::with_id(app, format!("header-{}", p.index()), p.name(), false, None::<&str>)?)?;
+        }
+        for (i, l) in lines.iter().enumerate() {
+            let text = if both { format!("    {l}") } else { l.clone() };
+            menu.append(&MenuItem::with_id(app, format!("line-{}-{i}", p.index()), text, false, None::<&str>)?)?;
+        }
     }
     menu.append(&PredefinedMenuItem::separator(app)?)?;
     menu.append(&MenuItem::with_id(app, "open", "Open", true, None::<&str>)?)?;
     menu.append(&MenuItem::with_id(app, "refresh", "Refresh", true, None::<&str>)?)?;
     let show = Submenu::with_id(app, "provider", "Show usage for", true)?;
-    show.append(&CheckMenuItem::with_id(app, "provider-codex", "Codex", true, provider == Provider::Codex, None::<&str>)?)?;
-    show.append(&CheckMenuItem::with_id(app, "provider-claude", "Claude Code", true, provider == Provider::Claude, None::<&str>)?)?;
+    let (provider, both) = (settings.provider(), settings.show_both_providers);
+    show.append(&CheckMenuItem::with_id(app, "provider-codex", "Codex", true, !both && provider == Provider::Codex, None::<&str>)?)?;
+    show.append(&CheckMenuItem::with_id(app, "provider-claude", "Claude Code", true, !both && provider == Provider::Claude, None::<&str>)?)?;
+    show.append(&CheckMenuItem::with_id(app, "provider-both", "Both", true, both, None::<&str>)?)?;
     menu.append(&show)?;
     menu.append(&PredefinedMenuItem::separator(app)?)?;
     menu.append(&CheckMenuItem::with_id(app, "startup", "Launch at startup", !cfg!(debug_assertions), settings.launch_at_startup, None::<&str>)?)?;

@@ -8,7 +8,8 @@ import { age } from "../../shared/format";
 
 function providerStatus(state: Snapshot | undefined, active: boolean) {
   if (!state) return "Checking…";
-  if (state.syncState === "synced" && state.usage) return "Connected";
+  if ((state.syncState === "synced" || state.syncState === "refreshing") && state.usage)
+    return "Connected";
   if (/sign in|sign-in|log ?in/i.test(state.error || ""))
     return "Sign-in needed";
   if (/not found/i.test(state.error || "")) return "Not installed";
@@ -19,6 +20,8 @@ function providerStatus(state: Snapshot | undefined, active: boolean) {
   return active ? "Connecting…" : "Not checked yet";
 }
 import { UpdatePanel } from "./UpdatePanel";
+import { ProviderLogo } from "./ProviderLogo";
+import { patchFor, viewOf } from "./ProviderSwitch";
 import { pillSize } from "../../shared/pill";
 import { CompactPill } from "./CompactPill";
 import { BrandMark, TraySymbol, PillStyleSymbol } from "./Icons";
@@ -42,7 +45,9 @@ export function SettingsView({
   settings: incomingSettings,
   now,
   state,
+  shown,
 }: {
+  shown: Snapshot[];
   settings: Settings;
   now: number;
   state: Snapshot;
@@ -167,7 +172,9 @@ export function SettingsView({
         <div className="preview-caption">
           <span>YOUR FLOATING PILL</span>
           <span>
-            {providerName(settings.provider)}{" "}
+            {settings.showBothProviders
+              ? "Codex + Claude Code"
+              : providerName(settings.provider)}{" "}
             ·{" "}
             {state.syncState === "synced"
               ? "Live usage"
@@ -192,6 +199,7 @@ export function SettingsView({
             }}
           >
             <CompactPill
+              shown={shown}
               state={
                 state.provider && state.provider !== settings.provider
                   ? {
@@ -209,7 +217,9 @@ export function SettingsView({
           </div>
         </div>
         <p>
-          {settings.pillLayout === "both"
+          {settings.showBothProviders
+            ? "Codex and Claude Code side by side. Hover either for details."
+            : settings.pillLayout === "both"
             ? settings.pillBothStyle === "combined"
               ? settings.pillIndicator === "ring"
                 ? "5-hour outside. Weekly inside."
@@ -240,10 +250,17 @@ export function SettingsView({
           <div className="preferences-grid">
             <section>
               <h2>What you see</h2>
+              {settings.showBothProviders && (
+                <p className="preference-note">
+                  Showing Codex and Claude Code side by side, each with both
+                  limits. Contents, progress style and extras still apply.
+                </p>
+              )}
               <div
                 className="choice-grid"
                 role="group"
                 aria-label="Pill display"
+                hidden={settings.showBothProviders}
               >
                 {[
                   ["alternating", "One limit", "Click to switch"],
@@ -287,7 +304,7 @@ export function SettingsView({
                   Indicator only
                 </button>
               </div>
-              {settings.pillLayout === "alternating" && (
+              {settings.pillLayout === "alternating" && !settings.showBothProviders && (
                 <label className="select-row">
                   <span>Switch limits</span>
                   <select
@@ -579,69 +596,102 @@ export function SettingsView({
           <div className="preferences-grid">
             <section>
               <h2>Show usage for</h2>
-              <div className="provider-cards" role="radiogroup" aria-label="Provider">
-                {(["codex", "claude"] as const).map((p) => {
-                  const status = providers.find((s) => s.provider === p);
+              <div className="provider-cards" role="radiogroup" aria-label="Show usage for">
+                {(["codex", "claude", "both"] as const).map((v) => {
+                  const active = viewOf(settings) === v;
+                  const status =
+                    v === "both"
+                      ? "Side by side"
+                      : providerStatus(
+                          providers.find((s) => s.provider === v),
+                          settings.showBothProviders || settings.provider === v,
+                        );
                   return (
                     <button
-                      key={p}
+                      key={v}
                       role="radio"
                       className="choice-card provider-card"
-                      aria-checked={settings.provider === p}
-                      aria-pressed={settings.provider === p}
-                      onClick={() => void update({ provider: p })}
+                      aria-checked={active}
+                      aria-pressed={active}
+                      onClick={() => void update(patchFor(v))}
                     >
-                      <strong>{providerName(p)}</strong>
-                      <small>{providerStatus(status, settings.provider === p)}</small>
+                      <span className="provider-card-logo" aria-hidden="true">
+                        {v === "both" ? (
+                          <>
+                            <ProviderLogo provider="codex" size={16} />
+                            <ProviderLogo provider="claude" size={16} />
+                          </>
+                        ) : (
+                          <ProviderLogo provider={v} size={18} />
+                        )}
+                      </span>
+                      <strong>{v === "both" ? "Both" : providerName(v)}</strong>
+                      <small>{status}</small>
                     </button>
                   );
                 })}
               </div>
-              <p className="preference-note">
-                The tray, pill, alerts and usage details all follow this
-                choice. Switch any time from the usage popup, the tray menu or
-                by right-clicking the pill.
-              </p>
-              {toggle(
-                "pillShowProvider",
-                "Provider badge on the pill",
-                "A small X (Codex) or C (Claude Code) mark so you always know which you are viewing.",
-              )}
-            </section>
-            <section>
-              <h2>{providerName(settings.provider)}</h2>
-              {settings.provider === "codex" ? (
-                <p className="preference-note">
-                  Uses your signed-in Codex CLI (run <code>codex login</code>{" "}
-                  once). Usage events update immediately; background checks
-                  follow your refresh interval.
-                </p>
+              {settings.showBothProviders ? (
+                <>
+                  <label className="select-row">
+                    <span>Tray icon follows</span>
+                    <select
+                      aria-label="Tray icon follows"
+                      value={settings.provider}
+                      onChange={(e) =>
+                        void update({ provider: e.target.value as Settings["provider"] })
+                      }
+                    >
+                      <option value="codex">Codex</option>
+                      <option value="claude">Claude Code</option>
+                    </select>
+                  </label>
+                  <p className="preference-note">
+                    The pill shows each provider with both limits (5-hour outer
+                    or top, weekly inner or bottom). Hover a provider for exact
+                    percentages and reset times. Alerts cover both.
+                  </p>
+                </>
               ) : (
                 <>
                   <p className="preference-note">
-                    Reads your Claude Code sign-in (run <code>claude</code> and
-                    log in with a Pro or Max account) and asks Anthropic for
-                    the same account usage shown by <code>/usage</code>. Usage
-                    from the terminal, desktop app, IDE extensions and
-                    claude.ai is all included.
+                    Switch any time from the usage popup, the tray menu or by
+                    right-clicking the pill.
                   </p>
-                  <p className="preference-note">
-                    When the saved sign-in expires, Koodex renews it the same
-                    way Claude Code does and keeps Claude Code signed in. Checks
-                    run at most every 30 seconds.
-                  </p>
+                  {toggle(
+                    "pillShowProvider",
+                    "Provider logo on the pill",
+                    "Shows the Codex or Claude mark so you always know which you are viewing.",
+                  )}
                 </>
               )}
-              {state.error && state.provider === settings.provider && (
-                <p className="save-error" role="status">
-                  {state.error}
-                </p>
-              )}
-              <h2 className="section-gap">Other providers</h2>
+            </section>
+            <section>
+              <h2 className="provider-setup-heading">
+                <ProviderLogo provider="codex" size={14} /> Codex
+              </h2>
               <p className="preference-note">
-                Cursor is not supported: its documented usage API is hourly
-                team data, not live personal limits.
+                Uses your signed-in Codex CLI (run <code>codex login</code>{" "}
+                once). Usage events update immediately; background checks follow
+                your refresh interval.
               </p>
+              <h2 className="section-gap provider-setup-heading">
+                <ProviderLogo provider="claude" size={14} /> Claude Code
+              </h2>
+              <p className="preference-note">
+                Reads your Claude Code sign-in (run <code>claude</code> and log
+                in with Pro or Max) and asks Anthropic for the usage shown by{" "}
+                <code>/usage</code>, so the terminal, desktop app, IDE
+                extensions and claude.ai all count. Expired sign-ins are renewed
+                the way Claude Code does. Checked at most every 30 seconds.
+              </p>
+              {providers
+                .filter((s) => s.error && (settings.showBothProviders || s.provider === settings.provider))
+                .map((s) => (
+                  <p className="save-error" role="status" key={s.provider}>
+                    {providerName(s.provider)}: {s.error}
+                  </p>
+                ))}
             </section>
           </div>
         )}
