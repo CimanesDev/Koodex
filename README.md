@@ -8,7 +8,7 @@ Choose the `x64-setup.exe` installer under **Assets**. Requires Windows 10/11 x6
 
 ## What's new in 2.1
 
-- **Show both providers, cleanly.** Pick **Codex**, **Claude Code** or **Both** from the popup header, the tray menu or the pill's right-click menu. In Both, the pill shows each provider as one compact segment (logo, a 5-hour/weekly indicator, two values) and the popup shows one card per provider. The tray icon follows the provider you choose.
+- **Show both providers, cleanly.** Pick **Codex**, **Claude Code** or **Both** from the popup header, the tray menu or the pill's right-click menu. In Both, the pill stacks one full-size row per provider, each styled with your Pill & appearance choices (one or both limits, separate or combined rings/bars, reset countdowns), and the popup shows one card per provider. The tray icon follows the provider you choose.
 - **Real logos.** The pill, switches and settings use the official Codex (OpenAI) and Claude marks.
 - **Fixed:** right-click → **Usage details** now opens the usage popup (it closed instantly before).
 

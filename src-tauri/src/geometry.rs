@@ -30,13 +30,14 @@ pub fn pill_size(s: &Settings) -> (f64, f64) {
     let badge = if s.pill_show_provider { if vertical { 18.0 } else { 22.0 } } else { 0.0 };
     let reset = s.pill_show_reset && !minimal;
     if s.show_both_providers {
-        // Two provider segments: logo + both-limits indicator (+ two short values).
+        // Two rows of the configured pill, each with its provider logo; the
+        // grip and refresh button are shared.
+        let row = pill_size(&Settings { show_both_providers: false, pill_show_provider: true, ..s.clone() });
         if vertical {
-            let segment = 20.0 + (if ring { 28.0 } else { 14.0 }) + if minimal { 0.0 } else { 26.0 };
-            return (if minimal { 44.0 } else { 56.0 }, segment * 2.0 + 13.0 + 16.0 + grip + refresh);
+            let inner = row.1 - grip - refresh;
+            return (row.0, inner * 2.0 + 9.0 + grip + refresh);
         }
-        let segment = 22.0 + (if ring { 28.0 } else { 44.0 }) + if minimal { 0.0 } else { 42.0 };
-        return (segment * 2.0 + 13.0 + 16.0 + grip + refresh, 44.0);
+        return (row.0, row.1 * 2.0 - 6.0);
     }
     if vertical {
         if minimal {
@@ -172,9 +173,11 @@ mod tests {
     #[test]
     fn both_providers_size() {
         let s = Settings { show_both_providers: true, ..Default::default() };
-        assert_eq!(pill_size(&s), (2.0 * 92.0 + 13.0 + 16.0 + 20.0, 44.0));
-        let v = Settings { pill_placement: "left".into(), pill_content: "indicator".into(), ..s };
-        assert_eq!(pill_size(&v), (44.0, 2.0 * 48.0 + 13.0 + 16.0 + 16.0));
+        // Default row: 176 + 22 (logo) wide, 44 tall.
+        assert_eq!(pill_size(&s), (198.0, 82.0));
+        let v = Settings { pill_placement: "left".into(), ..s };
+        // Vertical row: 48 + 16 grip + 18 logo tall.
+        assert_eq!(pill_size(&v), (132.0, 66.0 * 2.0 + 9.0 + 16.0));
     }
 
     #[test]
