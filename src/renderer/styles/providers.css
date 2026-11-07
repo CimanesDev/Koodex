@@ -1,76 +1,10 @@
 body:has(.usage-panel) {
   overflow: hidden;
 }
-/* Provider rows share geometry with the native pill window. */
-.pill.pill-multi {
-  border-radius: 18px;
-  padding: 0;
-}
-.pill.pill-multi > .pill-content {
-  padding: 4px 8px !important;
-  display: flex;
-  min-height: 0;
-}
-.multi-provider-content {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  width: 100%;
-  min-width: 0;
-}
-.provider-pill-row {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  min-width: 0;
-}
-.provider-pill-label {
-  flex: 0 0 46px;
-  font-size: 10px;
-  color: var(--text-secondary);
-  text-align: left;
-}
-.provider-pill-row > .pill[data-material] {
-  flex-shrink: 0;
-  border: 0;
-  background: transparent;
-  box-shadow: none;
-  opacity: 1;
-  border-radius: 10px;
-}
-.pill-vertical.pill-multi > .pill-content {
-  padding: 4px 0 !important;
-}
-.pill-vertical.pill-multi .provider-pill-row {
-  flex-direction: column;
-  gap: 4px;
-}
-.pill-vertical.pill-multi .provider-pill-label {
-  flex: 0 0 16px;
-  line-height: 16px;
-  text-align: center;
-}
-.pill-vertical.pill-multi > .drag-handle {
-  flex: 0 0 16px;
-  min-height: 16px;
-}
-.pill-vertical.pill-multi > .pill-refresh {
-  flex: 0 0 32px;
-  margin: 0;
-}
 .usage-panel {
   max-height: 520px;
   overflow-y: auto;
   scrollbar-width: thin;
-}
-.provider-usage + .provider-usage {
-  border-top: 1px solid var(--border);
-  margin-top: 16px;
-  padding-top: 14px;
-}
-.provider-heading {
-  margin: 4px 0 8px;
-  font-weight: 600;
 }
 .connection-diagnostic {
   margin-top: 12px;
@@ -102,4 +36,96 @@ body:has(.usage-panel) {
   display: grid;
   place-items: center;
   flex-shrink: 0;
+}
+
+/* One provider at a time: a compact segmented switch. */
+.provider-switch {
+  display: inline-flex;
+  padding: 2px;
+  gap: 2px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--surface);
+}
+.provider-switch button {
+  padding: 5px 12px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  transition:
+    background 120ms ease,
+    color 120ms ease;
+}
+.provider-switch button[aria-checked="true"] {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+.provider-switch-compact button {
+  padding: 4px 10px;
+  font-size: 11.5px;
+}
+.provider-switch button:focus-visible {
+  outline: 1px solid var(--text-secondary);
+  outline-offset: 1px;
+}
+.usage-panel > header {
+  margin-bottom: 10px;
+}
+.provider-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.provider-card {
+  align-items: flex-start;
+  text-align: left;
+}
+.provider-card small {
+  margin-top: 2px;
+}
+.provider-badge {
+  display: grid;
+  place-items: center;
+  flex: 0 0 16px;
+  width: 16px;
+  height: 16px;
+  margin-right: 6px;
+  border-radius: 5px;
+  font-size: 9.5px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--background);
+  background: var(--text-secondary);
+}
+.provider-badge.provider-claude {
+  background: #d9a088;
+}
+.pill-vertical .provider-badge {
+  margin: 0 auto 2px;
+}
+.icon-button.refresh.spinning svg {
+  animation: koodex-spin 900ms linear infinite;
+}
+@keyframes koodex-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .icon-button.refresh.spinning svg {
+    animation: none;
+  }
+}
+code {
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 0.95em;
+  padding: 0 3px;
+  border-radius: 4px;
+  background: var(--surface);
+}
+.provider-cards + .preference-note {
+  margin-bottom: 14px;
 }

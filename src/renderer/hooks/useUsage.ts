@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { Snapshot } from "../../shared/types";
 export function useUsage() {
   const [snapshot, setSnapshot] = useState<Snapshot>({
+    provider: "codex",
     usage: null,
     syncState: "connecting",
   });

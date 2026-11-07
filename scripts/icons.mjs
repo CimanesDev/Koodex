@@ -66,21 +66,8 @@ function image(size, style, color, amount = 7, app = false, weekly = 4) {
     }
   return PNG.sync.write(png);
 }
-mkdirSync("assets/tray", { recursive: true });
+// Tray icons are rendered at runtime by src-tauri/src/icon.rs.
 mkdirSync("assets/icons", { recursive: true });
-for (const [theme, color] of [
-  ["light", [242, 246, 244]],
-  ["dark", [30, 36, 33]],
-]) {
-  writeFileSync(`assets/tray/${theme}-logo.png`, image(20, "logo", color));
-  for (const style of ["meter", "ring"])
-    for (let amount = -1; amount <= 10; amount++)
-      for (let weekly = -1; weekly <= 10; weekly++)
-        writeFileSync(
-          `assets/tray/${theme}-${style}-dual-${amount}-${weekly}.png`,
-          image(20, style, color, amount, false, weekly),
-        );
-}
 const sizes = [16, 20, 32, 48, 64, 128, 256],
   images = sizes.map((s) => image(s, "logo", [238, 238, 238], 10, true));
 const header = Buffer.alloc(6 + 16 * sizes.length);
@@ -99,3 +86,5 @@ sizes.forEach((size, i) => {
 });
 writeFileSync("assets/icons/koodex.ico", Buffer.concat([header, ...images]));
 writeFileSync("assets/icons/koodex.png", images.at(-1));
+writeFileSync("src-tauri/icons/icon.ico", Buffer.concat([header, ...images]));
+writeFileSync("src-tauri/icons/icon.png", images.at(-1));

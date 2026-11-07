@@ -1,0 +1,39 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Koodex",
+  "mainBinaryName": "Koodex",
+  "version": "../package.json",
+  "identifier": "com.koodex.desktop",
+  "build": {
+    "beforeDevCommand": "npm run dev:web",
+    "devUrl": "http://127.0.0.1:5173",
+    "beforeBuildCommand": "npm run build:web",
+    "frontendDist": "../dist/renderer"
+  },
+  "app": {
+    "withGlobalTauri": false,
+    "windows": [],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src ipc: http://ipc.localhost"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis"],
+    "publisher": "cimanesdev",
+    "copyright": "MIT License, cimanesdev",
+    "category": "Utility",
+    "shortDescription": "Codex and Claude Code usage in your tray",
+    "icon": ["icons/icon.png", "icons/icon.ico"],
+    "windows": {
+      "webviewInstallMode": { "type": "downloadBootstrapper", "silent": true },
+      "nsis": {
+        "installMode": "currentUser",
+        "installerIcon": "icons/icon.ico",
+        "headerImage": "../build/installerHeader.bmp",
+        "sidebarImage": "../build/installerSidebar.bmp",
+        "installerHooks": "../build/installer-hooks.nsh"
+      }
+    }
+  }
+}

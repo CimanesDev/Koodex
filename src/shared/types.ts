@@ -14,17 +14,18 @@ export interface CodexUsage {
 }
 export type SyncState =
   "connecting" | "synced" | "refreshing" | "stale" | "offline" | "error";
+export type Provider = "codex" | "claude";
+export const providerName = (p: Provider | undefined) =>
+  p === "claude" ? "Claude Code" : "Codex";
 export interface Snapshot {
-  provider?: "codex" | "claude";
+  provider: Provider;
   usage: CodexUsage | null;
   syncState: SyncState;
   error?: string;
-  companion?: Snapshot;
 }
 export interface Settings {
-  monitorBoth: boolean;
   pillShortcut: "off" | "CommandOrControl+Shift+K" | "CommandOrControl+Alt+K";
-  provider: "codex" | "claude";
+  provider: Provider;
   launchAtStartup: boolean;
   notificationsEnabled: boolean;
   refreshIntervalSeconds: 10 | 30 | 60 | 300;
@@ -42,6 +43,7 @@ export interface Settings {
   accentColor: "neutral" | "blue" | "mint" | "lavender" | "rose";
   pillShowReset: boolean;
   pillShowRefresh: boolean;
+  pillShowProvider: boolean;
   trayStyle: "meter" | "ring";
   trayColor: "auto" | "light" | "dark";
   showRefreshActivity: boolean;
@@ -52,7 +54,6 @@ export interface Settings {
   pillPosition?: { x: number; y: number };
 }
 export const defaults: Settings = {
-  monitorBoth: false,
   pillShortcut: "off",
   provider: "codex",
   launchAtStartup: false,
@@ -71,13 +72,14 @@ export const defaults: Settings = {
   accentColor: "neutral",
   pillShowReset: false,
   pillShowRefresh: false,
+  pillShowProvider: false,
   trayStyle: "meter",
   trayColor: "auto",
   showRefreshActivity: false,
   pillOpacity: 100,
   pillMaterial: "solid",
   setupCompleted: false,
-  settingsVersion: 2,
+  settingsVersion: 3,
 };
 export interface UpdateState {
   status:
@@ -107,8 +109,9 @@ export interface Bridge {
   onUpdateState(cb: (s: UpdateState) => void): () => void;
   dragPill(phase: "start" | "move" | "end" | "cancel"): Promise<void>;
   expandPill(expanded: boolean): Promise<void>;
-  prepareClaudeBridge(): Promise<string>;
+  showPillMenu(): Promise<void>;
   getUsage(): Promise<Snapshot>;
+  getAllUsage(): Promise<Snapshot[]>;
   refreshUsage(): Promise<void>;
   onUsageUpdated(cb: (s: Snapshot) => void): () => void;
   getSettings(): Promise<Settings>;
